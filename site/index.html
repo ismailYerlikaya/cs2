@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111513">
+  <meta name="description" content="CS2 envanterinin fiyatları, değişimleri ve toplam değeri.">
+  <title>CS2 Market Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23c5f36b'/%3E%3Cpath d='M15 43V29h9v14zm13 0V20h9v23zm13 0V11h9v32z' fill='%23111513'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="CS2 Market Tracker ana sayfa"><span class="brand-icon" aria-hidden="true">↗</span><span>CS2 <span class="muted">/</span> MARKET TRACKER</span></a>
+    <div class="top-meta"><span class="live-dot" aria-hidden="true"></span>8 saatte bir kontrol <span class="currency">TRY ₺</span></div>
+  </header>
+
+  <main>
+    <div class="page-heading">
+      <div><p class="eyebrow">ENVANTER ÖZETİ</p><h1>Piyasa değişir.<br class="mobile-break"> Sen takipte kal.</h1><p class="subtitle">CS2 envanterinin değeri ve son fiyat hareketleri, tek bir yerde.</p></div>
+      <button id="refresh" type="button"><span aria-hidden="true">↻</span> Veriyi yenile</button>
+    </div>
+
+    <div id="notice" class="notice" role="status" aria-live="polite">Envanter verileri yükleniyor…</div>
+
+    <section class="summary-grid" aria-label="Envanter özeti">
+      <article class="metric primary"><div class="metric-label"><span id="total-label">TOPLAM ENVANTER DEĞERİ</span><span aria-hidden="true">↗</span></div><div id="total" class="hero-value">—</div><p id="total-note">Steam Market · TL karşılığı</p><div class="metric-decoration" aria-hidden="true"></div></article>
+      <article class="metric"><div class="metric-label">SON KONTROLE GÖRE</div><div id="change" class="metric-value">—</div><p id="change-note">Karşılaştırma için iki ölçüm gerekir.</p></article>
+      <article class="metric"><div class="metric-label">TAKİP EDİLEN ENVANTER</div><div class="metric-value"><span id="item-count">—</span><span class="unit"> farklı item</span></div><p id="quantity">Marketable itemlar takip edilir.</p></article>
+    </section>
+
+    <div class="update-strip"><span id="last-update">Henüz kontrol yapılmadı</span><span id="fx">Kaynak: Steam Community Market</span></div>
+
+    <section class="movers-grid" aria-label="Fiyat hareketleri">
+      <article class="panel"><div class="panel-title"><h2><span class="up-icon" aria-hidden="true">↗</span> En çok yükselenler</h2><span class="tag">İLK 5</span></div><div id="gainers" class="mover-list"><p class="empty-small">Henüz karşılaştırılacak veri yok.</p></div></article>
+      <article class="panel"><div class="panel-title"><h2><span class="down-icon" aria-hidden="true">↘</span> En çok düşenler</h2><span class="tag">İLK 5</span></div><div id="losers" class="mover-list"><p class="empty-small">Henüz karşılaştırılacak veri yok.</p></div></article>
+    </section>
+
+    <section class="panel inventory-panel" aria-labelledby="inventory-title">
+      <div class="inventory-heading"><div><p class="eyebrow">TÜM ENVANTER</p><h2 id="inventory-title">Itemların, bir bakışta.</h2></div><div class="table-controls"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Item ara…" aria-label="Envanterde item ara"></label><select id="sort" aria-label="Envanteri sırala"><option value="total_value">Toplam değer</option><option value="change_percent">Değişim</option><option value="display_name">İsim</option><option value="quantity">Adet</option></select></div></div>
+      <div class="table-scroll"><table><thead><tr><th scope="col">ITEM</th><th scope="col">ADET</th><th scope="col">FİYAT</th><th scope="col">DEĞİŞİM</th><th scope="col">TOPLAM DEĞER</th></tr></thead><tbody id="inventory"><tr><td colspan="5" class="empty-table">İlk Steam kontrolünden sonra envanterin burada görünecek.</td></tr></tbody></table></div>
+      <div class="table-footer"><span id="result-count">0 item</span><span>Fiyatlar komisyon öncesi en düşük satış ilanıdır.</span></div>
+    </section>
+    <footer><span class="footer-brand">CS2 <span class="muted">/</span> MARKET TRACKER</span><p>TL fiyatları TCMB kuru ile hesaplanır. Değişimler kur etkisini de içerir.<br>Steam veya Valve ile bağlantılı değildir.</p></footer>
+  </main>
+</body>
+</html>

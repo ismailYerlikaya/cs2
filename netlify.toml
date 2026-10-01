@@ -1,0 +1,24 @@
+[build]
+  publish = "site"
+  # İsteğe bağlı açık GitHub JSON adresi; sadece bu adres tarayıcıya aktarılır.
+  command = '''node -e 'const fs=require("fs"); const url=process.env.TRACKER_DATA_URL||null; if(url && !/^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/.+\/site\/data\/latest\.json$/.test(url)) throw new Error("TRACKER_DATA_URL must point to public GitHub latest.json"); fs.writeFileSync("site/source.json",JSON.stringify({url}));' '''
+  # Uzaktaki JSON seçilince sadece veri değişimi için yeni yayın yapılmaz.
+  # TRACKER_DATA_URL boşsa standart Git tabanlı yayın devam eder.
+  ignore = '''if [ -n "$TRACKER_DATA_URL" ] && [ -n "$CACHED_COMMIT_REF" ]; then git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- site/index.html site/style.css site/app.js netlify.toml; else exit 1; fi'''
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/source.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
