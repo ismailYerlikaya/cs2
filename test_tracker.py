@@ -47,6 +47,16 @@ class TrackerTests(unittest.TestCase):
         with self.assertRaises(t.TrackerError):
             t.fetch_market_price(Mock(json=Mock(return_value={"success": True, "median_price": "$1.00"})), "Case")
 
+    def test_bulk_prices_use_steam_24h_values_only_for_inventory_items(self):
+        client = Mock(json=Mock(return_value={
+            "Case": {"steam": {"last_24h": 0.26}},
+            "Other": {"steam": {"last_24h": "1.00"}},
+            "Unused": {"steam": {"last_24h": 5}},
+        }))
+        self.assertEqual(t.fetch_bulk_market_prices(client, [item("Case"), item("Other")]),
+                         {"Case": Decimal("0.26")})
+        client.json.assert_called_once_with("GET", t.PRICE_URL, service="CSROI")
+
     def test_finished_inventory_with_unavailable_asset_is_explicitly_partial(self):
         page = {"success": 1, "total_inventory_count": 2,
                 "assets": [{"assetid": "1", "classid": "10", "amount": "1"}],
@@ -79,6 +89,14 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(t.alarm(5), "📈 Yükseliş")
         self.assertIsNone(t.alarm(4.99))
         self.assertIsNone(t.percent(10, 0))
+
+    def test_price_source_change_resets_comparison(self):
+        before = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, NOW - timedelta(hours=8),
+                                  price_source="old source")
+        after = t.build_snapshot([item()], {"Case": Decimal("2")}, FX, before, NOW,
+                                 price_source="new source")
+        self.assertIsNone(after["items"][0]["change_percent"])
+        self.assertIsNone(after["change_value"])
 
     def test_missing_price_never_creates_false_crash(self):
         before = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, NOW - timedelta(hours=8))
@@ -169,10 +187,10 @@ class TrackerTests(unittest.TestCase):
                  patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"), \
                  patch.object(t, "fetch_inventory", return_value=[item(quantity=20), item("Other")]), \
                  patch.object(t, "fetch_exchange_rate", return_value=FX), \
-                 patch.object(t, "fetch_market_price", side_effect=[Decimal("2"), t.TrackerError("unavailable")]) as price, \
+                 patch.object(t, "fetch_bulk_market_prices", return_value={"Case": Decimal("2")}) as price, \
                  patch.object(t, "send_telegram") as send:
                 self.assertEqual(t.main(), 0)
-                self.assertEqual(price.call_count, 2)
+                self.assertEqual(price.call_count, 1)
                 result = json.loads(latest.read_text(encoding="utf-8"))
                 self.assertEqual(result["total_value"], 1600)
                 self.assertEqual(result["missing_prices"], 1)
@@ -189,12 +207,12 @@ class TrackerTests(unittest.TestCase):
                  patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"), \
                  patch.object(t, "fetch_inventory", return_value=[item()]), \
                  patch.object(t, "fetch_exchange_rate", return_value=FX), \
-                 patch.object(t, "fetch_market_price", side_effect=t.SteamRateLimitError("limited")), \
+                 patch.object(t, "fetch_bulk_market_prices", return_value={}), \
                  patch.object(t, "send_telegram") as send:
                 self.assertEqual(t.main(), 1)
                 self.assertEqual(history.read_text(), "[]")
                 self.assertEqual(latest.read_text(), '{"unchanged":true}')
-                self.assertIn("Hiçbir item", send.call_args.args[-1])
+                self.assertIn("Toplu fiyat kaynağında", send.call_args.args[-1])
 
 
 if __name__ == "__main__":

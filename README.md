@@ -2,9 +2,9 @@
 
 Tek Steam hesabı için Python + GitHub Actions + Telegram + statik dashboard. Bilgisayarının açık kalması gerekmez. Veriler yalnızca `data/history.json` ve `site/data/latest.json` içinde tutulur; database veya ayrı sunucu yoktur.
 
-**Doğrulama durumu:** Canlı Steam envanteri çekme/gruplama ve TCMB kur servisi doğrulandı. Steam bağlantısında aralıklı kesintiler görülüyor. Tam fiyat taraması ve Telegram rapor teslimatı henüz uçtan uca doğrulanmadı. 14 yerel test hesaplama, sayfalama ve hata işleme mantığını sınar; canlı servislerin çalıştığının kanıtı değildir. Başlangıç JSON'ları boş; örnek/fake fiyat bulunmaz. Tam akışı aşağıdaki 7. adımda doğrula.
+**Doğrulama durumu:** Canlı Steam envanteri çekme/gruplama ve TCMB kur servisi doğrulandı. Steam'in GitHub sunucusuna uyguladığı fiyat sınırı nedeniyle fiyatlar, CSROI.com'un ücretsiz ve toplu Steam fiyat JSON'undan alınır. Bu kaynak Steam son 24 saat fiyat göstergesini yaklaşık 6 saatte bir yeniler; anlık en düşük ilan değildir. Tam fiyat taraması ve Telegram rapor teslimatı henüz uçtan uca doğrulanmadı. Yerel testler hesaplama, sayfalama ve hata işleme mantığını sınar; canlı servislerin çalıştığının kanıtı değildir. Başlangıç JSON'ları boş; örnek/fake fiyat bulunmaz. Tam akışı aşağıdaki 7. adımda doğrula.
 
-**TL ve ücretsiz yayın:** Steam Türkiye'de USD kullanır. Bu proje Steam'in USD ilan fiyatını TCMB'nin son yayımlanan USD döviz satış kuruyla TL'ye çevirir. Netlify'ın yeni Free planında 300 kredi/ay ve üretim yayını başına 15 kredi vardır; günde üç yayın ücretsiz kotaya sığmaz. 8. adımda verilen açık GitHub JSON bağlantısını kullanırsan her fiyat kontrolünde yeni Netlify yayını yapılmaz. Hosting trafiği ve servislerin ücretsiz kullanım limitleri yine geçerlidir.
+**TL ve ücretsiz yayın:** Fiyat kaynağındaki USD Steam fiyat göstergesi TCMB'nin son yayımlanan USD döviz satış kuruyla TL'ye çevrilir. Netlify'ın yeni Free planında 300 kredi/ay ve üretim yayını başına 15 kredi vardır; günde üç yayın ücretsiz kotaya sığmaz. 8. adımda verilen açık GitHub JSON bağlantısını kullanırsan her fiyat kontrolünde yeni Netlify yayını yapılmaz. Hosting trafiği ve servislerin ücretsiz kullanım limitleri yine geçerlidir.
 
 ## 1. SteamID64 değerini bul
 
@@ -88,7 +88,7 @@ Sonra **Settings → Actions → General → Workflow permissions** bölümünde
 1. Repository'de **Actions** sekmesine gir. İstenirse Actions'ı etkinleştir.
 2. **CS2 Inventory Tracker** iş akışını seç.
 3. **Run workflow → main → Run workflow** düğmelerine bas.
-4. Çalıştırmayı aç ve adımları takip et. Her benzersiz item için en az 3 saniye beklenir; çok sayıda farklı item varsa birkaç dakika sürebilir.
+4. Çalıştırmayı aç ve adımları takip et. Envanter Steam'den, fiyatlar tek toplu istekte alınır.
 5. Başarılı sonuçta:
    - Telegram botundan rapor gelir.
    - `site/data/latest.json` içinde gerçek itemlar ve kontrol zamanı görünür.
@@ -103,15 +103,15 @@ Hata olduğunda kontrol et:
 | Hata / belirti | Yapılacak işlem |
 | --- | --- |
 | Envanter alınamadı / 403 | SteamID64 ve Public ayarlarını doğrula. Steam'in GitHub sunucusu IP'sine geçici kısıt koyması da mümkündür. Sonra yeniden dene. |
-| Steam 429 | Steam'e yeniden denemeler arasında 30, 60, 120 ve 240 saniye beklenir. Sınır sürerse iş akışı hata verir; bir süre bekleyip sonraki planlı çalıştırmayı dene. |
-| Hiç fiyat alınamadı | Steam erişimi veya endpoint yanıtını kontrol et. Eski JSON korunur; sıfır değerli rapor kaydedilmez. |
+| Steam 429 | Fiyatlar artık Steam'e ayrı ayrı sorulmaz; Steam envanteri yine erişilemiyorsa bir süre bekleyip sonraki çalıştırmada dene. |
+| Hiç fiyat alınamadı | Toplu fiyat dosyası veya item adlarını kontrol et. Eski JSON korunur; sıfır değerli rapor kaydedilmez. |
 | Bazı fiyatlar alınamadı | Kısmi toplam ve eksik item sayısı açıkça gösterilir; toplam değişim gizlenir. |
 | TCMB hatası | Eski/uydurma kur kullanılmaz. Servis düzeldiğinde tekrar çalıştır. Tatilde son yayımlanan kur kullanılır; 10 günden eski kur kabul edilmez. |
 | Telegram 400 / 401 / 403 | Token ve chat ID'yi kontrol et; bot sohbetinde `/start` gönder ve engeli kaldır. Alınmış fiyatlar Telegram hata verse de commit edilir, Actions kırmızı kalır. |
 | JSON commit/push reddedildi | Workflow yazma iznini ve branch kurallarını kontrol et. |
 | Dashboard 12 saatten eski | Son başarılı ölçüm korunmuştur; Actions'ın son çalıştırmasına bak. |
 
-Steam'in inventory ve priceoverview adresleri herkese açık Community uçlarıdır; garantili bir fiyat API'si/SLA yoktur. Steam erişimi engellerse veya yanıt biçimini değiştirirse kodun uyarlanması gerekir. Fiyat kaynağını değiştirmek için `fetch_market_price` fonksiyonu ayrıdır.
+Fiyatlar [CSROI.com](https://csroi.com/) tarafından sağlanan [toplu JSON](https://csroi.com/pricing.json) içindeki Steam `last_24h` alanıdır. CSROI, bu ücretsiz veri dosyasının kaynak gösterilerek kullanılmasını ister ve yaklaşık 6 saatte bir yenilemeyi dener. Bu nedenle gösterge güncel en düşük satış ilanına eşit olmak zorunda değildir; satış fiyatı veya ele geçecek net tutar garantisi vermez. Envanter verisi yalnızca Steam'den çekilir; fiyat isteğine SteamID, envanter veya Telegram bilgisi gönderilmez.
 
 ## 8. Netlify'a bağla
 
@@ -171,7 +171,7 @@ Copy-Item .env.example .env
 ## Küçük ayarlar ve davranışlar
 
 - Alarm eşikleri `tracker.py` başında: `ALARM_UP = 10`, `NOTICE_UP = 5`, `ALARM_DOWN = -10`, `NOTICE_DOWN = -5`.
-- USD fiyatı “lowest_price” alanından gelir. Güncel ilan yoksa eski satışların medyanı güncel fiyatmış gibi kullanılmaz.
+- USD fiyatı toplu fiyat kaynağındaki Steam “last_24h” alanından gelir; anlık en düşük ilan olarak yorumlanmamalıdır. Kaynak değiştiğinde eski kaynakla hatalı değişim karşılaştırması yapılmaz.
 - Item yüzdesi `((yeni - eski) / eski) × 100`; eski fiyat yoksa veya sıfırsa yüzde boş kalır. Fiyat alınamayan itemlar sonraki ölçümde de yanlış karşılaştırma üretmez.
 - Envanterde ekleme/çıkarma veya adet değişimi varsa toplam fark bunu da içerir; raporda belirtilir. TL yüzdesi kur hareketini de içerir. Değerler satıştan eline geçecek net tutar değildir.
 - Steam tüm sayfaları döndürmesine rağmen bildirilen toplamdan daha az item gösterebilir. Bu durumda erişilebilen itemlar işlenir; eksik item sayısı Telegram ve dashboard'da belirtilir, toplam kısmi olarak gösterilir ve toplam değişim hesaplanmaz. Hiç asset dönmeyen dolu envanter veya yarım kalan sayfalama hâlâ hata kabul edilir.
@@ -181,6 +181,8 @@ Copy-Item .env.example .env
 - Başka bir Steam hesabına geçersen geçmişi karıştırmamak için `data/history.json` dosyasını `[]` yap, `site/data/latest.json` dosyasını başlangıç biçimine döndür ve sonra yeni Secret ile çalıştır.
 
 ## Resmî kaynaklar
+
+- [CSROI ücretsiz fiyat dosyası ve kaynak bilgisi](https://csroi.com/pricing.json), [CSROI FAQ](https://csroi.com/faq/)
 
 - [Steam: Türkiye'de USD'ye geçiş](https://help.steampowered.com/tr/faqs/view/2720-4EC7-B95A-1D2A)
 - [TCMB: kullanılan günlük kur XML'i](https://www.tcmb.gov.tr/kurlar/today.xml)

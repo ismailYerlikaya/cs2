@@ -27,6 +27,8 @@ STEAM_RETRY_BASE_SECONDS = 30
 TIMEOUT = (10, 25)
 MAX_RETRY_WAIT = 600
 HISTORY_DAYS = 30
+PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"
+PRICE_URL = "https://csroi.com/pricing.json"
 ROOT = Path(__file__).resolve().parent
 HISTORY_PATH = ROOT / "data/history.json"
 LATEST_PATH = ROOT / "site/data/latest.json"
@@ -183,6 +185,21 @@ def fetch_market_price(client, market_hash_name):
     return parse_usd_price(result["lowest_price"])
 
 
+def fetch_bulk_market_prices(client, inventory):
+    """Steam'in tek tek fiyat sorgularındaki IP sınırına takılmamak için toplu veri al."""
+    data = client.json("GET", PRICE_URL, service="CSROI")
+    prices = {}
+    for item in inventory:
+        name = item["market_hash_name"]
+        steam_data = data.get(name, {}).get("steam", {})
+        value = steam_data.get("last_24h") if isinstance(steam_data, dict) else None
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            price = Decimal(str(value))
+            if price.is_finite() and price >= 0:
+                prices[name] = price
+    return prices
+
+
 def fetch_exchange_rate(client, now):
     response = client.request("GET", "https://www.tcmb.gov.tr/kurlar/today.xml", service="TCMB")
     try:
@@ -219,14 +236,16 @@ def alarm(change):
     return None
 
 
-def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None):
+def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None,
+                   price_source=PRICE_SOURCE):
+    same_price_source = previous is not None and previous.get("price_source") == price_source
     old_items = {item["market_hash_name"]: item for item in (previous or {}).get("items", [])}
     items = []
     for entry in inventory:
         name = entry["market_hash_name"]
         usd = prices.get(name)
         current = money(usd * Decimal(str(fx["usd_try"]))) if usd is not None else None
-        old = old_items.get(name, {}).get("current_price")
+        old = old_items.get(name, {}).get("current_price") if (previous or {}).get("price_source") == price_source else None
         change = percent(current, old) if current is not None else None
         items.append({**entry, "price_usd": float(usd) if usd is not None else None,
                       "previous_price": old, "current_price": current,
@@ -236,13 +255,14 @@ def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None
     total = money(sum((Decimal(str(item["total_value"])) for item in items if item["total_value"] is not None), Decimal(0)))
     unavailable = (inventory_metadata or {}).get("unavailable_assets", 0)
     complete = missing == 0 and unavailable == 0
-    comparable = previous is not None and previous.get("complete") is True and complete
-    old_total = previous.get("total_value") if previous else None
+    comparable = same_price_source and previous.get("complete") is True and complete
+    old_total = previous.get("total_value") if same_price_source else None
     difference = money(Decimal(str(total)) - Decimal(str(old_total))) if comparable else None
     elapsed = (now - datetime.fromisoformat(previous["checked_at"])).total_seconds() / 3600 if previous else None
     return {"schema_version": 1, "status": "ok" if complete else "partial", "currency": "TRY",
-            "checked_at": now.isoformat(), "previous_checked_at": previous["checked_at"] if previous else None,
-            "interval_hours": round(elapsed, 2) if elapsed is not None else None,
+            "checked_at": now.isoformat(), "previous_checked_at": previous["checked_at"] if same_price_source else None,
+            "price_source": price_source,
+            "interval_hours": round(elapsed, 2) if same_price_source and elapsed is not None else None,
             "fx": fx, "total_value": total, "previous_total_value": old_total,
             "change_value": difference, "change_percent": percent(total, old_total) if comparable else None,
             "complete": complete, "missing_prices": missing, "unavailable_assets": unavailable,
@@ -299,7 +319,8 @@ def tl(value):
 
 
 def make_report(snapshot):
-    lines = ["📊 CS2 MARKET RAPORU", "", "💰 " + ("Fiyatı alınabilenlerin değeri" if not snapshot["complete"] else "Envanter Değeri"),
+    lines = ["📊 CS2 MARKET RAPORU", "", "Fiyat kaynağı: " + snapshot.get("price_source", "Steam Community Market"),
+             "💰 " + ("Fiyatı alınabilenlerin değeri" if not snapshot["complete"] else "Envanter Değeri"),
              tl(snapshot["total_value"])]
     if snapshot["change_value"] is not None:
         lines.extend(["", f"⏱ Önceki kontrol → şimdi ({snapshot['interval_hours']:g} saat)",
@@ -327,7 +348,7 @@ def make_report(snapshot):
     if snapshot["inventory_changed"]:
         lines.append("📦 Envanter içeriği/adetleri değişti; toplam fark yalnızca fiyat hareketi değildir.")
     lines.extend([f"USD → TL: TCMB {snapshot['fx']['date']} · {snapshot['fx']['usd_try']:g}",
-                  "TL değişimi döviz kuru etkisini de içerir. Değerler komisyon öncesi ilan fiyatlarıdır.",
+                  "TL değişimi döviz kuru etkisini de içerir. Son 24 saat fiyatı gösterge niteliğindedir; anlık ilan veya net satış tutarı değildir.",
                   "🕒 Son kontrol: " + datetime.fromisoformat(snapshot["checked_at"]).astimezone(TR_TIME).strftime("%d.%m.%Y %H:%M")])
     # Normal rapor kısa tutulur; ilk 5 listelerine girmeyen önemli hareketler de kaybolmaz.
     top_names = {x["market_hash_name"] for x in sorted([x for x in changed if x["change_percent"] > 0], key=lambda x: -x["change_percent"])[:5]}
@@ -386,27 +407,14 @@ def main():
         if args.check_inventory:
             return 0
         fx = fetch_exchange_rate(client, now)
-        prices = {}
-        consecutive_failures = 0
-        for index, item in enumerate(inventory, 1):
-            name = item["market_hash_name"]
-            try:
-                prices[name] = fetch_market_price(client, name)
-                consecutive_failures = 0
-            except SteamRateLimitError:
-                LOG.warning("Steam istek sınırına ulaşıldı. Kalan fiyatlar bu çalıştırmada atlanıyor.")
-                break
-            except TrackerError as error:
-                consecutive_failures += 1
-                LOG.warning("Fiyat alınamadı (%s/%s) %s: %s", index, len(inventory), name, error)
-                if consecutive_failures >= 5:
-                    LOG.warning("Art arda 5 fiyat alınamadı; Steam'e yük bindirmemek için kalanlar atlanıyor.")
-                    break
+        LOG.info("Fiyatlar tek toplu istekte %s kaynağından alınıyor.", PRICE_SOURCE)
+        prices = fetch_bulk_market_prices(client, inventory)
         if inventory and not prices:
-            raise TrackerError("Hiçbir itemın fiyatı alınamadı; önceki JSON dosyaları korunuyor.")
+            raise TrackerError("Toplu fiyat kaynağında envanter itemları bulunamadı; önceki JSON dosyaları korunuyor.")
         now = datetime.now(timezone.utc)
         history = [row for row in history if datetime.fromisoformat(row["checked_at"]) >= now - timedelta(days=HISTORY_DAYS)]
-        snapshot = build_snapshot(inventory, prices, fx, history[-1] if history else None, now, inventory_metadata)
+        previous = history[-1] if history else None
+        snapshot = build_snapshot(inventory, prices, fx, previous, now, inventory_metadata)
         write_json(HISTORY_PATH, [*history, snapshot])
         write_json(LATEST_PATH, snapshot)
         LOG.info("JSON güncellendi. %s; fiyatı alınamayan: %s.", tl(snapshot["total_value"]), snapshot["missing_prices"])
