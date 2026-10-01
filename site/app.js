@@ -118,6 +118,7 @@ function render(data) {
   if (stale) notices.push("Veri 12 saatten eski. Son iş akışının sonucunu GitHub Actions'tan kontrol et.");
   if (data.missing_prices) notices.push(`${data.missing_prices} itemın fiyatı alınamadı. Gösterilen toplam kısmi; toplam değişim hesaplanmadı.`);
   if (data.unavailable_assets) notices.push(`Steam ${data.unavailable_assets} itemın ayrıntılarını göstermedi. Toplam yalnızca erişilebilen itemları kapsar; toplam değişim hesaplanmadı.`);
+  if (data.inventory_source === "cache") notices.push("Steam bu kontrolde envanteri vermedi; son bilinen envanter ve güncel fiyatlar kullanıldı.");
   if (data.inventory_changed) notices.push("Envanter içeriği veya adetleri değişti. Toplam fark bu değişimi de içerir.");
   showNotice(notices.join(" "), stale);
   renderInventory();

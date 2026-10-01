@@ -2,9 +2,9 @@ name: CS2 Inventory Tracker
 
 on:
   schedule:
-    # UTC → Türkiye (UTC+3): 00:07, 08:07, 16:07.
-    # Saat başındaki yoğunluğu azaltır; GitHub kesin çalıştırma saati garanti etmez.
-    - cron: '7 21,5,13 * * *'
+    # Her saat (UTC :07) dener; tracker son başarılı rapordan 7,5 saat geçmediyse hemen çıkar.
+    # Böylece rapor ~8 saatte bir gelir ve başarısız bir deneme bir saat sonra tekrarlanır.
+    - cron: '7 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -44,6 +44,7 @@ jobs:
         env:
           STEAM_ID: ${{ secrets.STEAM_ID }}
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          MIN_HOURS_BETWEEN_REPORTS: ${{ github.event_name == 'schedule' && '7.5' || '0' }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python tracker.py

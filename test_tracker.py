@@ -283,5 +283,42 @@ class TrackerTests(unittest.TestCase):
                 self.assertIn("Toplu fiyat kaynağında", send.call_args.args[-1])
 
 
+    def run_main(self, folder, history, env=None, **patches):
+        paths = Path(folder) / "history.json", Path(folder) / "latest.json"
+        t.write_json(paths[0], history)
+        environ = {"STEAM_ID": "76561197960287930", "TELEGRAM_BOT_TOKEN": "test", "TELEGRAM_CHAT_ID": "test", **(env or {})}
+        with patch.object(t, "HISTORY_PATH", paths[0]), patch.object(t, "LATEST_PATH", paths[1]),              patch.dict(t.os.environ, environ), patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"),              patch.object(t, "fetch_exchange_rate", return_value=FX),              patch.object(t, "fetch_bulk_market_prices", return_value={"Case": Decimal("1.1")}),              patch.object(t, "fetch_inventory", **patches) as inventory, patch.object(t, "send_telegram") as send:
+            return t.main(), inventory, send, paths
+
+    def test_steam_block_uses_last_known_inventory_with_fresh_prices(self):
+        before = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, datetime.now(timezone.utc) - timedelta(hours=8))
+        with tempfile.TemporaryDirectory() as folder:
+            code, _, send, paths = self.run_main(folder, [before], side_effect=t.SteamRateLimitError("Steam istek sınırı (HTTP 429)"))
+            self.assertEqual(code, 0)
+            latest = json.loads(paths[1].read_text(encoding="utf-8"))
+            self.assertEqual(latest["inventory_source"], "cache")
+            self.assertEqual(latest["inventory_checked_at"], before["checked_at"])
+            self.assertEqual(latest["items"][0]["change_percent"], 10)
+            self.assertEqual(latest["change_value"], 12)
+            self.assertIn("son envanter kullanıldı", send.call_args.args[-1])
+
+    def test_scheduled_run_skips_when_recent_report_exists(self):
+        recent = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, datetime.now(timezone.utc) - timedelta(hours=2))
+        with tempfile.TemporaryDirectory() as folder:
+            code, inventory, send, _ = self.run_main(folder, [recent], {"MIN_HOURS_BETWEEN_REPORTS": "7.5"}, return_value=[item()])
+            self.assertEqual(code, 0)
+            inventory.assert_not_called()
+            send.assert_not_called()
+
+    def test_first_inventory_failure_is_quiet_on_schedule_but_reported_manually(self):
+        with tempfile.TemporaryDirectory() as folder:
+            code, _, send, _ = self.run_main(folder, [], {"MIN_HOURS_BETWEEN_REPORTS": "7.5"}, side_effect=t.SteamRateLimitError("429"))
+            self.assertEqual(code, 1)
+            send.assert_not_called()
+            code, _, send, _ = self.run_main(folder, [], {"MIN_HOURS_BETWEEN_REPORTS": "0"}, side_effect=t.SteamRateLimitError("429"))
+            self.assertEqual(code, 1)
+            send.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

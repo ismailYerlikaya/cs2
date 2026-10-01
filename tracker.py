@@ -206,6 +206,24 @@ def fetch_inventory(client, steam_id, *, metadata=None, api_key=None):
     return sorted(grouped.values(), key=lambda item: item["market_hash_name"])
 
 
+def load_inventory(client, steam_id, api_key):
+    """Önce Steam Web API (key varsa), olmazsa steamcommunity.com envanteri."""
+    metadata = {}
+    if api_key:
+        try:
+            return fetch_inventory(client, steam_id, metadata=metadata, api_key=api_key), metadata
+        except TrackerError as error:
+            LOG.warning("Steam Web API envanteri alınamadı (%s); steamcommunity.com deneniyor.", error)
+            metadata = {}
+    return fetch_inventory(client, steam_id, metadata=metadata), metadata
+
+
+def cached_inventory(snapshot):
+    """Steam envanteri vermezse son başarılı kayıttaki item listesi; fiyatlar yine güncel alınır."""
+    keys = ("market_hash_name", "display_name", "quantity", "image_url")
+    return [{key: item.get(key) for key in keys} for item in snapshot["items"]], snapshot.get("inventory_counts") or {}
+
+
 def parse_usd_price(value):
     # currency=1 + country=US + language=english. Başka para birimini USD sanma.
     match = re.fullmatch(r"(?:US)?\$\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)(?:\s*USD)?", value.strip())
@@ -387,6 +405,9 @@ def make_report(snapshot):
         lines.append(f"⚠️ {snapshot['missing_prices']} itemın fiyatı alınamadı; toplam eksik, bu itemlar sıfır sayılmadı.")
     if snapshot.get("unavailable_assets"):
         lines.append(f"⚠️ Steam {snapshot['unavailable_assets']} itemın ayrıntılarını göstermedi. Değer yalnızca erişilebilen itemları kapsar; toplam değişim hesaplanmadı.")
+    if snapshot.get("inventory_source") == "cache":
+        lines.append("⚠️ Steam bu kontrolde envanteri vermedi; " + datetime.fromisoformat(snapshot["inventory_checked_at"]).astimezone(TR_TIME).strftime("%d.%m.%Y %H:%M")
+                     + " tarihli son envanter kullanıldı. Fiyatlar günceldir.")
     if snapshot["inventory_changed"]:
         lines.append("📦 Envanter içeriği/adetleri değişti; toplam fark yalnızca fiyat hareketi değildir.")
     lines.extend([f"USD → TL: TCMB {snapshot['fx']['date']} · {snapshot['fx']['usd_try']:g}",
@@ -430,6 +451,9 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     client = HttpClient()
     token, chat_id = os.getenv("TELEGRAM_BOT_TOKEN", "").strip(), os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    # Planlı çalıştırma saatlik; son başarılı rapordan bu kadar saat geçmeden iş yapılmaz.
+    min_gap = float(os.getenv("MIN_HOURS_BETWEEN_REPORTS") or 0)
+    notify = True
     try:
         now = datetime.now(timezone.utc)
         if args.check_price:
@@ -443,17 +467,23 @@ def main():
         if not args.check_inventory and (not token or not chat_id):
             raise TrackerError("TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID zorunlu.")
         history = read_history(now) if not args.check_inventory else []
-        inventory_metadata = {}
-        api_key = os.getenv("STEAM_API_KEY", "").strip()
+        if history and now - datetime.fromisoformat(history[-1]["checked_at"]) < timedelta(hours=min_gap):
+            LOG.info("Son başarılı kontrolün üzerinden %s saat geçmedi; bu planlı çalıştırma atlandı.", f"{min_gap:g}")
+            return 0
+        inventory_source, inventory_checked_at = "steam", None
         try:
-            inventory = fetch_inventory(client, steam_id, metadata=inventory_metadata, api_key=api_key or None)
+            inventory, inventory_metadata = load_inventory(client, steam_id, os.getenv("STEAM_API_KEY", "").strip() or None)
         except TrackerError as error:
-            if not api_key:
+            if args.check_inventory or not history:
+                # İlk envanter alınana kadar saatlik denemeler Telegram'ı hata mesajıyla doldurmasın.
+                notify = min_gap == 0
                 raise
-            LOG.warning("Steam Web API envanteri alınamadı (%s); steamcommunity.com deneniyor.", error)
-            inventory_metadata = {}
-            inventory = fetch_inventory(client, steam_id, metadata=inventory_metadata)
-        LOG.info("Gerçek Steam envanteri: %s farklı marketable item, %s adet.", len(inventory), sum(x["quantity"] for x in inventory))
+            LOG.warning("Steam envanteri alınamadı (%s); son bilinen envanter kullanılıyor.", error)
+            inventory, inventory_metadata = cached_inventory(history[-1])
+            inventory_source = "cache"
+            inventory_checked_at = history[-1].get("inventory_checked_at") or history[-1]["checked_at"]
+        LOG.info("%s envanter: %s farklı marketable item, %s adet.", "Gerçek Steam" if inventory_source == "steam" else "Son bilinen",
+                 len(inventory), sum(x["quantity"] for x in inventory))
         if args.check_inventory:
             return 0
         fx = fetch_exchange_rate(client, now)
@@ -465,6 +495,7 @@ def main():
         history = [row for row in history if datetime.fromisoformat(row["checked_at"]) >= now - timedelta(days=HISTORY_DAYS)]
         previous = history[-1] if history else None
         snapshot = build_snapshot(inventory, prices, fx, previous, now, inventory_metadata)
+        snapshot.update(inventory_source=inventory_source, inventory_checked_at=inventory_checked_at or snapshot["checked_at"])
         write_json(HISTORY_PATH, [*history, snapshot])
         write_json(LATEST_PATH, snapshot)
         LOG.info("JSON güncellendi. %s; fiyatı alınamayan: %s.", tl(snapshot["total_value"]), snapshot["missing_prices"])
@@ -474,7 +505,7 @@ def main():
     except (TrackerError, OSError, ValueError, KeyError, TypeError, ArithmeticError) as error:
         safe_message = str(error) if isinstance(error, TrackerError) else "Veri işlenemedi veya dosyaya yazılamadı; dosya izinlerini ve veri biçimini kontrol edin."
         LOG.error("%s", safe_message)
-        if token and chat_id and not args.check_inventory and not args.check_price:
+        if notify and token and chat_id and not args.check_inventory and not args.check_price:
             try:
                 send_telegram(client, token, chat_id, "⚠️ CS2 takip kontrolü tamamlanamadı.\n" + safe_message + "\nSon başarılı veri tarihi dashboard'da gösterilir.")
             except TrackerError:
