@@ -97,7 +97,7 @@ class HttpClient:
         return data
 
 
-def fetch_inventory(client, steam_id):
+def fetch_inventory(client, steam_id, *, metadata=None):
     if not re.fullmatch(r"7656119\d{10}", steam_id):
         raise TrackerError("STEAM_ID 17 haneli SteamID64 olmalı; profil adı veya bağlantısı değil.")
     grouped, seen_assets, cursors = {}, set(), set()
@@ -149,8 +149,13 @@ def fetch_inventory(client, steam_id):
             raise TrackerError("Steam envanter sayfalaması tamamlanamadı.")
         cursors.add(cursor)
         params["start_assetid"] = cursor
-    if expected is not None and len(seen_assets) != expected:
-        raise TrackerError("Steam envanteri eksik döndü; önceki veriler korunuyor.")
+    unavailable = max(0, expected - len(seen_assets)) if expected is not None else 0
+    if expected is not None and len(seen_assets) > expected:
+        raise TrackerError("Steam envanter sayıları tutarsız; önceki veriler korunuyor.")
+    if metadata is not None:
+        metadata.update(reported_assets=expected, returned_assets=len(seen_assets), unavailable_assets=unavailable)
+    if unavailable:
+        LOG.warning("Steam %s item bildirdi ancak tamamlanan sayfalarda %s item gösterdi. %s itemın ayrıntıları erişilemiyor; toplam kısmi olacak.", expected, len(seen_assets), unavailable)
     return sorted(grouped.values(), key=lambda item: item["market_hash_name"])
 
 
@@ -211,7 +216,7 @@ def alarm(change):
     return None
 
 
-def build_snapshot(inventory, prices, fx, previous, now):
+def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None):
     old_items = {item["market_hash_name"]: item for item in (previous or {}).get("items", [])}
     items = []
     for entry in inventory:
@@ -226,16 +231,19 @@ def build_snapshot(inventory, prices, fx, previous, now):
                       "total_value": money(Decimal(str(current)) * entry["quantity"]) if current is not None else None})
     missing = sum(item["current_price"] is None for item in items)
     total = money(sum((Decimal(str(item["total_value"])) for item in items if item["total_value"] is not None), Decimal(0)))
-    comparable = previous is not None and previous.get("complete") is True and missing == 0
+    unavailable = (inventory_metadata or {}).get("unavailable_assets", 0)
+    complete = missing == 0 and unavailable == 0
+    comparable = previous is not None and previous.get("complete") is True and complete
     old_total = previous.get("total_value") if previous else None
     difference = money(Decimal(str(total)) - Decimal(str(old_total))) if comparable else None
     elapsed = (now - datetime.fromisoformat(previous["checked_at"])).total_seconds() / 3600 if previous else None
-    return {"schema_version": 1, "status": "partial" if missing else "ok", "currency": "TRY",
+    return {"schema_version": 1, "status": "ok" if complete else "partial", "currency": "TRY",
             "checked_at": now.isoformat(), "previous_checked_at": previous["checked_at"] if previous else None,
             "interval_hours": round(elapsed, 2) if elapsed is not None else None,
             "fx": fx, "total_value": total, "previous_total_value": old_total,
             "change_value": difference, "change_percent": percent(total, old_total) if comparable else None,
-            "complete": missing == 0, "missing_prices": missing, "unique_items": len(items),
+            "complete": complete, "missing_prices": missing, "unavailable_assets": unavailable,
+            "inventory_counts": inventory_metadata or {}, "unique_items": len(items),
             "quantity": sum(item["quantity"] for item in items),
             "inventory_changed": previous is not None and {x["market_hash_name"]: x["quantity"] for x in items}
                                  != {key: value["quantity"] for key, value in old_items.items()},
@@ -295,7 +303,7 @@ def make_report(snapshot):
                       ("+" if snapshot["change_value"] > 0 else "") + tl(snapshot["change_value"]),
                       f"{snapshot['change_percent']:+.2f}%" if snapshot["change_percent"] is not None else "Önceki toplam sıfır; yüzde hesaplanamaz."])
     else:
-        lines.extend(["", "İlk ölçüm veya eksik fiyat nedeniyle toplam değişim hesaplanamadı."])
+        lines.extend(["", "İlk ölçüm veya eksik veri nedeniyle toplam değişim hesaplanamadı."])
     changed = [x for x in snapshot["items"] if x["change_percent"] is not None]
     for title, rows in [("🔥 En Çok Yükselenler", sorted([x for x in changed if x["change_percent"] > 0], key=lambda x: -x["change_percent"])[:5]),
                         ("🔻 En Çok Düşenler", sorted([x for x in changed if x["change_percent"] < 0], key=lambda x: x["change_percent"])[:5])]:
@@ -311,6 +319,8 @@ def make_report(snapshot):
                   f"📦 {snapshot['unique_items']} farklı item · {snapshot['quantity']} adet."])
     if snapshot["missing_prices"]:
         lines.append(f"⚠️ {snapshot['missing_prices']} itemın fiyatı alınamadı; toplam eksik, bu itemlar sıfır sayılmadı.")
+    if snapshot.get("unavailable_assets"):
+        lines.append(f"⚠️ Steam {snapshot['unavailable_assets']} itemın ayrıntılarını göstermedi. Değer yalnızca erişilebilen itemları kapsar; toplam değişim hesaplanmadı.")
     if snapshot["inventory_changed"]:
         lines.append("📦 Envanter içeriği/adetleri değişti; toplam fark yalnızca fiyat hareketi değildir.")
     lines.extend([f"USD → TL: TCMB {snapshot['fx']['date']} · {snapshot['fx']['usd_try']:g}",
@@ -367,7 +377,8 @@ def main():
         if not args.check_inventory and (not token or not chat_id):
             raise TrackerError("TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID zorunlu.")
         history = read_history(now) if not args.check_inventory else []
-        inventory = fetch_inventory(client, steam_id)
+        inventory_metadata = {}
+        inventory = fetch_inventory(client, steam_id, metadata=inventory_metadata)
         LOG.info("Gerçek Steam envanteri: %s farklı marketable item, %s adet.", len(inventory), sum(x["quantity"] for x in inventory))
         if args.check_inventory:
             return 0
@@ -392,7 +403,7 @@ def main():
             raise TrackerError("Hiçbir itemın fiyatı alınamadı; önceki JSON dosyaları korunuyor.")
         now = datetime.now(timezone.utc)
         history = [row for row in history if datetime.fromisoformat(row["checked_at"]) >= now - timedelta(days=HISTORY_DAYS)]
-        snapshot = build_snapshot(inventory, prices, fx, history[-1] if history else None, now)
+        snapshot = build_snapshot(inventory, prices, fx, history[-1] if history else None, now, inventory_metadata)
         write_json(HISTORY_PATH, [*history, snapshot])
         write_json(LATEST_PATH, snapshot)
         LOG.info("JSON güncellendi. %s; fiyatı alınamayan: %s.", tl(snapshot["total_value"]), snapshot["missing_prices"])

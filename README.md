@@ -2,7 +2,7 @@
 
 Tek Steam hesabı için Python + GitHub Actions + Telegram + statik dashboard. Bilgisayarının açık kalması gerekmez. Veriler yalnızca `data/history.json` ve `site/data/latest.json` içinde tutulur; database veya ayrı sunucu yoktur.
 
-**Doğrulama durumu:** Hesap bilgileri henüz eklenmedi. Bu geliştirme ortamından Steam envanter ve market adreslerine yapılan gerçek bağlantılar kesildi; canlı Steam verisi ve Telegram teslimatı doğrulanamadı. TCMB kur servisi canlı olarak test edildi. Yerel testler hesaplama, sayfalama ve hata işleme mantığını sınar; canlı servislerin çalıştığının kanıtı değildir. Başlangıç JSON'ları boş; örnek/fake fiyat bulunmaz. İlk gerçek doğrulamayı aşağıdaki 7. adımda yap.
+**Doğrulama durumu:** Canlı Steam envanteri çekme/gruplama ve TCMB kur servisi doğrulandı. Steam bağlantısında aralıklı kesintiler görülüyor. Tam fiyat taraması ve Telegram rapor teslimatı henüz uçtan uca doğrulanmadı. 14 yerel test hesaplama, sayfalama ve hata işleme mantığını sınar; canlı servislerin çalıştığının kanıtı değildir. Başlangıç JSON'ları boş; örnek/fake fiyat bulunmaz. Tam akışı aşağıdaki 7. adımda doğrula.
 
 **TL ve ücretsiz yayın:** Steam Türkiye'de USD kullanır. Bu proje Steam'in USD ilan fiyatını TCMB'nin son yayımlanan USD döviz satış kuruyla TL'ye çevirir. Netlify'ın yeni Free planında 300 kredi/ay ve üretim yayını başına 15 kredi vardır; günde üç yayın ücretsiz kotaya sığmaz. 8. adımda verilen açık GitHub JSON bağlantısını kullanırsan her fiyat kontrolünde yeni Netlify yayını yapılmaz. Hosting trafiği ve servislerin ücretsiz kullanım limitleri yine geçerlidir.
 
@@ -174,6 +174,7 @@ Copy-Item .env.example .env
 - USD fiyatı “lowest_price” alanından gelir. Güncel ilan yoksa eski satışların medyanı güncel fiyatmış gibi kullanılmaz.
 - Item yüzdesi `((yeni - eski) / eski) × 100`; eski fiyat yoksa veya sıfırsa yüzde boş kalır. Fiyat alınamayan itemlar sonraki ölçümde de yanlış karşılaştırma üretmez.
 - Envanterde ekleme/çıkarma veya adet değişimi varsa toplam fark bunu da içerir; raporda belirtilir. TL yüzdesi kur hareketini de içerir. Değerler satıştan eline geçecek net tutar değildir.
+- Steam tüm sayfaları döndürmesine rağmen bildirilen toplamdan daha az item gösterebilir. Bu durumda erişilebilen itemlar işlenir; eksik item sayısı Telegram ve dashboard'da belirtilir, toplam kısmi olarak gösterilir ve toplam değişim hesaplanmaz. Hiç asset dönmeyen dolu envanter veya yarım kalan sayfalama hâlâ hata kabul edilir.
 - Geçmiş her başarılı veri kaydında 30 güne kırpılır. Repository'nin Git geçmişindeki eski commitler ayrıca var olmaya devam eder. Başarısız veri alımında son başarılı dosyalar korunur.
 - Telegram her normal çalıştırmada rapor gönderir. İlk 5 yükselen/düşene ek olarak diğer ±%10 önemli hareketler de gönderilir; uzun raporlar Telegram boyut sınırına göre bölünür. Telegram erişimi tamamen kesikse teslimat mümkün değildir; Actions hata verir. Telegram gönderim yanıtı kaybolursa yeniden deneme nedeniyle aynı mesaj iki kez gelebilir.
 - Envanter veya tüm fiyatlar alınamazsa anlamlı hata bildirimi gönderilmeye çalışılır; job başarısız olur. Art arda 5 ayrı item fiyatı alınamazsa daha fazla istek yapılmaz.

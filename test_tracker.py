@@ -47,6 +47,24 @@ class TrackerTests(unittest.TestCase):
         with self.assertRaises(t.TrackerError):
             t.fetch_market_price(Mock(json=Mock(return_value={"success": True, "median_price": "$1.00"})), "Case")
 
+    def test_finished_inventory_with_unavailable_asset_is_explicitly_partial(self):
+        page = {"success": 1, "total_inventory_count": 2,
+                "assets": [{"assetid": "1", "classid": "10", "amount": "1"}],
+                "descriptions": [{"classid": "10", "marketable": 1, "market_hash_name": "Case"}]}
+        metadata = {}
+        inventory = t.fetch_inventory(Mock(json=Mock(return_value=page)), "76561197960287930", metadata=metadata)
+        self.assertEqual(metadata, {"reported_assets": 2, "returned_assets": 1, "unavailable_assets": 1})
+        before = t.build_snapshot([item(quantity=1)], {"Case": Decimal("1")}, FX, None, NOW - timedelta(hours=8))
+        after = t.build_snapshot(inventory, {"Case": Decimal("1.1")}, FX, before, NOW, metadata)
+        self.assertEqual(after["total_value"], 44)
+        self.assertFalse(after["complete"])
+        self.assertEqual(after["status"], "partial")
+        self.assertIsNone(after["change_value"])
+        self.assertEqual(after["items"][0]["change_percent"], 10)
+        self.assertIn("Steam 1 itemın ayrıntılarını göstermedi", t.make_report(after))
+        recovered = t.build_snapshot(inventory, {"Case": Decimal("1.1")}, FX, after, NOW + timedelta(hours=8))
+        self.assertIsNone(recovered["change_value"])
+
     def test_totals_fx_and_thresholds(self):
         before = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, NOW - timedelta(hours=8))
         after = t.build_snapshot([item()], {"Case": Decimal("1.1")}, FX, before, NOW)

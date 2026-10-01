@@ -101,10 +101,10 @@ function render(data) {
   snapshot = data;
   $("total-label").textContent = data.complete ? "TOPLAM ENVANTER DEĞERİ" : "FİYATI ALINABİLENLERİN DEĞERİ";
   $("total").textContent = money(data.total_value);
-  $("total-note").textContent = data.complete ? "Steam Market · Güncel TL karşılığı" : `${data.missing_prices} item hariç · Toplam eksik`;
+  $("total-note").textContent = data.complete ? "Steam Market · Güncel TL karşılığı" : "Yalnızca erişilen ve fiyatı alınabilen itemlar";
   $("change").textContent = percent(data.change_percent);
   $("change").className = `metric-value ${direction(data.change_percent)}`;
-  $("change-note").textContent = data.change_value != null ? `${data.change_value > 0 ? "+" : ""}${money(data.change_value)} · ${number.format(data.interval_hours)} saat önceye göre` : data.previous_checked_at ? "Eksik fiyat nedeniyle karşılaştırılamıyor." : "İlk ölçüm. Sonraki kontrolde hesaplanacak.";
+  $("change-note").textContent = data.change_value != null ? `${data.change_value > 0 ? "+" : ""}${money(data.change_value)} · ${number.format(data.interval_hours)} saat önceye göre` : data.previous_checked_at ? "Eksik veri nedeniyle karşılaştırılamıyor." : "İlk ölçüm. Karşılaştırma için iki tam ölçüm gerekir.";
   $("item-count").textContent = number.format(data.unique_items);
   $("quantity").textContent = `${number.format(data.quantity)} adet · ${data.missing_prices} eksik fiyat`;
   const checked = new Date(data.checked_at);
@@ -116,7 +116,8 @@ function render(data) {
   const notices = [];
   const stale = Date.now() - checked.getTime() > 12 * 3600000;
   if (stale) notices.push("Veri 12 saatten eski. Son iş akışının sonucunu GitHub Actions'tan kontrol et.");
-  if (!data.complete) notices.push(`${data.missing_prices} itemın fiyatı alınamadı. Gösterilen toplam kısmi; toplam değişim hesaplanmadı.`);
+  if (data.missing_prices) notices.push(`${data.missing_prices} itemın fiyatı alınamadı. Gösterilen toplam kısmi; toplam değişim hesaplanmadı.`);
+  if (data.unavailable_assets) notices.push(`Steam ${data.unavailable_assets} itemın ayrıntılarını göstermedi. Toplam yalnızca erişilebilen itemları kapsar; toplam değişim hesaplanmadı.`);
   if (data.inventory_changed) notices.push("Envanter içeriği veya adetleri değişti. Toplam fark bu değişimi de içerir.");
   showNotice(notices.join(" "), stale);
   renderInventory();
