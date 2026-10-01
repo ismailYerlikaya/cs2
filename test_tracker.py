@@ -32,6 +32,24 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(t.fetch_inventory(client, "76561197960287930"), [item()])
         self.assertEqual(client.json.call_count, 2)
 
+    def test_web_api_inventory_uses_key_and_response_wrapper(self):
+        desc = {"classid": "10", "instanceid": "0", "marketable": 1, "market_hash_name": "Case"}
+        client = Mock(json=Mock(return_value={"response": {"total_inventory_count": 1, "descriptions": [desc],
+                                                           "assets": [{"assetid": "1", "classid": "10", "instanceid": "0", "amount": "3"}]}}))
+        self.assertEqual(t.fetch_inventory(client, "76561197960287930", api_key="test-key"), [item()])
+        args, kwargs = client.json.call_args
+        self.assertEqual(args[1], t.WEB_API_INVENTORY_URL)
+        self.assertEqual(kwargs["params"]["key"], "test-key")
+        self.assertEqual(kwargs["params"]["steamid"], "76561197960287930")
+        with self.assertRaises(t.TrackerError):
+            t.fetch_inventory(Mock(json=Mock(return_value={})), "76561197960287930", api_key="test-key")
+
+    def test_main_falls_back_to_community_inventory_when_web_api_fails(self):
+        with tempfile.TemporaryDirectory() as folder,              patch.object(t, "HISTORY_PATH", Path(folder) / "history.json"), patch.object(t, "LATEST_PATH", Path(folder) / "latest.json"),              patch.dict(t.os.environ, {"STEAM_ID": "76561197960287930", "STEAM_API_KEY": "test-key", "TELEGRAM_BOT_TOKEN": "test", "TELEGRAM_CHAT_ID": "test"}),              patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"),              patch.object(t, "fetch_inventory", side_effect=[t.TrackerError("Steam: HTTP 403"), [item()]]) as inventory,              patch.object(t, "fetch_exchange_rate", return_value=FX),              patch.object(t, "fetch_bulk_market_prices", return_value={"Case": Decimal("1")}),              patch.object(t, "send_telegram"):
+            self.assertEqual(t.main(), 0)
+            self.assertEqual(inventory.call_args_list[0].kwargs["api_key"], "test-key")
+            self.assertNotIn("api_key", inventory.call_args_list[1].kwargs)
+
     def test_private_and_incomplete_inventory_rejected(self):
         for page in [{"success": 0}, {"success": 1}, {"success": 1, "total_inventory_count": 2, "assets": []}]:
             with self.subTest(page=page), self.assertRaises(t.TrackerError):

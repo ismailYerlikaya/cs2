@@ -73,13 +73,14 @@ git push -u origin main
 
 Repository → **Settings → Secrets and variables → Actions → New repository secret**.
 
-Üçünü ayrı ayrı ekle; değerleri tırnak içine alma:
+Her birini ayrı secret olarak ekle; değerleri tırnak içine alma:
 
 | Name | Secret değeri |
 | --- | --- |
 | `STEAM_ID` | 17 haneli SteamID64 |
 | `TELEGRAM_BOT_TOKEN` | BotFather'ın verdiği token |
 | `TELEGRAM_CHAT_ID` | 4. adımda bulduğun sohbet ID'si |
+| `STEAM_API_KEY` | Önerilir: [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) adresinden alınan ücretsiz Steam Web API key'i. Steam, GitHub sunucularına `steamcommunity.com` envanterini sık sık HTTP 429 ile reddeder; key varsa envanter `api.steampowered.com` üzerinden çekilir, olmazsa eski yönteme geçilir. Domain alanına herhangi bir ad (ör. `localhost`) yazılabilir. Key'i kimseyle paylaşma. |
 
 Sonra **Settings → Actions → General → Workflow permissions** bölümünde **Read and write permissions** seçip kaydet. İş akışı yalnızca kendi deposundaki JSON dosyalarını güncellemek için yazma izni ister. Branch protection/ruleset doğrudan push'u engelliyorsa bu kişisel depo için uygun izin verilmeli; workflow güvenlik kurallarını atlatmaz.
 

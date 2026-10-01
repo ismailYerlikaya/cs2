@@ -31,6 +31,7 @@ RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 HISTORY_DAYS = 30
 PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"
 PRICE_URL = "https://csroi.com/pricing.json"
+WEB_API_INVENTORY_URL = "https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/"
 ROOT = Path(__file__).resolve().parent
 HISTORY_PATH = ROOT / "data/history.json"
 LATEST_PATH = ROOT / "site/data/latest.json"
@@ -132,15 +133,25 @@ class HttpClient:
         return data
 
 
-def fetch_inventory(client, steam_id, *, metadata=None):
+def fetch_inventory(client, steam_id, *, metadata=None, api_key=None):
+    """api_key verilirse Steam Web API kullanılır; sınırı IP'ye değil key'e göredir."""
     if not re.fullmatch(r"7656119\d{10}", steam_id):
         raise TrackerError("STEAM_ID 17 haneli SteamID64 olmalı; profil adı veya bağlantısı değil.")
     grouped, seen_assets, cursors = {}, set(), set()
-    params = {"l": "english", "count": 2000}
+    params = {"count": 2000}
     expected = None
     while True:
-        page = client.json("GET", f"https://steamcommunity.com/inventory/{steam_id}/730/2",
-                           service="Steam", params=params)
+        if api_key:
+            # Key sorgu parametresinde kalır; loglar yalnızca host + yol yazar.
+            page = client.json("GET", WEB_API_INVENTORY_URL, service="Steam",
+                               params={"key": api_key, "steamid": steam_id, "appid": 730, "contextid": 2,
+                                       "get_descriptions": "true", "language": "english", **params}).get("response")
+            if not isinstance(page, dict):
+                raise TrackerError("Steam Web API envanter yanıtı boş veya beklenmeyen biçimde.")
+            page = {"success": 1, **page}
+        else:
+            page = client.json("GET", f"https://steamcommunity.com/inventory/{steam_id}/730/2",
+                               service="Steam", params={"l": "english", **params})
         if page.get("success") != 1:
             detail = f" (Steam: {' '.join(str(page['error']).split())[:150]})" if page.get("error") else ""
             raise TrackerError(f"Steam envanteri alınamadı{detail}. SteamID64, envanter gizliliği ve Steam erişimini kontrol edin.")
@@ -433,7 +444,15 @@ def main():
             raise TrackerError("TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID zorunlu.")
         history = read_history(now) if not args.check_inventory else []
         inventory_metadata = {}
-        inventory = fetch_inventory(client, steam_id, metadata=inventory_metadata)
+        api_key = os.getenv("STEAM_API_KEY", "").strip()
+        try:
+            inventory = fetch_inventory(client, steam_id, metadata=inventory_metadata, api_key=api_key or None)
+        except TrackerError as error:
+            if not api_key:
+                raise
+            LOG.warning("Steam Web API envanteri alınamadı (%s); steamcommunity.com deneniyor.", error)
+            inventory_metadata = {}
+            inventory = fetch_inventory(client, steam_id, metadata=inventory_metadata)
         LOG.info("Gerçek Steam envanteri: %s farklı marketable item, %s adet.", len(inventory), sum(x["quantity"] for x in inventory))
         if args.check_inventory:
             return 0

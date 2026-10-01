@@ -43,6 +43,7 @@ jobs:
         timeout-minutes: 8
         env:
           STEAM_ID: ${{ secrets.STEAM_ID }}
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python tracker.py
