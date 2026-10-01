@@ -5,7 +5,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import requests
 import tracker as t
@@ -125,11 +125,22 @@ class TrackerTests(unittest.TestCase):
     @patch.object(t.time, "sleep")
     def test_long_rate_limit_does_not_retry_early(self, sleep):
         client = t.HttpClient()
-        client.session.request = Mock(return_value=Mock(status_code=429, headers={"Retry-After": "600"}))
+        client.session.request = Mock(return_value=Mock(status_code=429, headers={"Retry-After": "601"}))
         with self.assertRaises(t.TrackerError):
-            client.request("GET", "https://example.invalid", service="TCMB")
+            client.request("GET", "https://example.invalid", service="Steam")
         self.assertEqual(client.session.request.call_count, 1)
-        sleep.assert_not_called()
+        self.assertFalse(any(entry.args and entry.args[0] > 0 for entry in sleep.call_args_list))
+
+    @patch.object(t.time, "sleep")
+    def test_steam_rate_limit_uses_long_exponential_backoff(self, sleep):
+        client = t.HttpClient()
+        throttled = Mock(status_code=429, headers={})
+        success = Mock(status_code=200, ok=True)
+        client.session.request = Mock(side_effect=[throttled, throttled, throttled, throttled, success])
+        self.assertIs(client.request("GET", "https://example.invalid", service="Steam"), success)
+        self.assertEqual(client.session.request.call_count, 5)
+        delays = [entry.args[0] for entry in sleep.call_args_list if entry.args and entry.args[0] in (30, 60, 120, 240)]
+        self.assertEqual(delays, [30, 60, 120, 240])
 
     @patch.object(t.time, "sleep")
     def test_all_major_alerts_and_telegram_size(self, sleep):

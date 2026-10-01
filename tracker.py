@@ -22,8 +22,10 @@ ALARM_DOWN = -10
 NOTICE_DOWN = -5
 REQUEST_DELAY = 3  # Steam'e her deneme dahil en az bu kadar saniye ara verilir.
 MAX_ATTEMPTS = 3
+STEAM_MAX_ATTEMPTS = 5
+STEAM_RETRY_BASE_SECONDS = 30
 TIMEOUT = (10, 25)
-MAX_RETRY_WAIT = 120
+MAX_RETRY_WAIT = 600
 HISTORY_DAYS = 30
 ROOT = Path(__file__).resolve().parent
 HISTORY_PATH = ROOT / "data/history.json"
@@ -47,11 +49,12 @@ class HttpClient:
         self.last_steam_request = 0.0
 
     def request(self, method, url, *, service, **kwargs):
-        for attempt in range(MAX_ATTEMPTS):
+        max_attempts = STEAM_MAX_ATTEMPTS if service == "Steam" else MAX_ATTEMPTS
+        for attempt in range(max_attempts):
             if service == "Steam":
                 time.sleep(max(0, REQUEST_DELAY - (time.monotonic() - self.last_steam_request)))
                 self.last_steam_request = time.monotonic()
-            wait = 5 * (2 ** attempt)
+            wait = (STEAM_RETRY_BASE_SECONDS if service == "Steam" else 5) * (2 ** attempt)
             try:
                 response = self.session.request(method, url, timeout=TIMEOUT, **kwargs)
             except requests.RequestException:
@@ -79,7 +82,7 @@ class HttpClient:
                         wait = max(wait, float(response.json().get("parameters", {}).get("retry_after", 0)))
                     except (ValueError, TypeError, AttributeError):
                         pass
-                if attempt == MAX_ATTEMPTS - 1 or wait > MAX_RETRY_WAIT:
+                if attempt == max_attempts - 1 or wait > MAX_RETRY_WAIT:
                     error_type = SteamRateLimitError if service == "Steam" and response.status_code == 429 else TrackerError
                     raise error_type(f"{service}: istek sınırı veya geçici sunucu hatası (HTTP {response.status_code}).")
             LOG.warning("%s geçici olarak yanıt vermiyor; %s saniye sonra yeniden deneniyor.", service, wait)

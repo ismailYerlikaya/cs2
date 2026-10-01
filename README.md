@@ -103,7 +103,7 @@ Hata olduğunda kontrol et:
 | Hata / belirti | Yapılacak işlem |
 | --- | --- |
 | Envanter alınamadı / 403 | SteamID64 ve Public ayarlarını doğrula. Steam'in GitHub sunucusu IP'sine geçici kısıt koyması da mümkündür. Sonra yeniden dene. |
-| Steam 429 | Bekle. Bot önce aralıklı yeniden dener; sınır sürerse kalan fiyatları atlar ve yeni Steam isteği göndermez. |
+| Steam 429 | Steam'e yeniden denemeler arasında 30, 60, 120 ve 240 saniye beklenir. Sınır sürerse iş akışı hata verir; bir süre bekleyip sonraki planlı çalıştırmayı dene. |
 | Hiç fiyat alınamadı | Steam erişimi veya endpoint yanıtını kontrol et. Eski JSON korunur; sıfır değerli rapor kaydedilmez. |
 | Bazı fiyatlar alınamadı | Kısmi toplam ve eksik item sayısı açıkça gösterilir; toplam değişim gizlenir. |
 | TCMB hatası | Eski/uydurma kur kullanılmaz. Servis düzeldiğinde tekrar çalıştır. Tatilde son yayımlanan kur kullanılır; 10 günden eski kur kabul edilmez. |
