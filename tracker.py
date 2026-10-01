@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 from xml.etree import ElementTree
 
 import requests
@@ -22,10 +23,11 @@ ALARM_DOWN = -10
 NOTICE_DOWN = -5
 REQUEST_DELAY = 3  # Steam'e her deneme dahil en az bu kadar saniye ara verilir.
 MAX_ATTEMPTS = 3
-STEAM_MAX_ATTEMPTS = 5
-STEAM_RETRY_BASE_SECONDS = 30
+STEAM_MAX_ATTEMPTS = 4  # Beklemeler 10, 20, 40 sn; GitHub Actions dakikalarca takılmaz.
+STEAM_RETRY_BASE_SECONDS = 10
 TIMEOUT = (10, 25)
-MAX_RETRY_WAIT = 600
+MAX_RETRY_WAIT = 120  # Daha uzun Retry-After istenirse beklemeden hata verilir.
+RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 HISTORY_DAYS = 30
 PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"
 PRICE_URL = "https://csroi.com/pricing.json"
@@ -44,6 +46,26 @@ class SteamRateLimitError(TrackerError):
     """Bu çalıştırmada başka Steam isteği gönderilmemeli."""
 
 
+def safe_endpoint(url):
+    """Log için host + yol. Sorgu yazılmaz; Telegram tokenı ve SteamID maskelenir."""
+    parts = urlsplit(url)
+    path = re.sub(r"/bot[^/]+/", "/bot***/", parts.path)
+    return parts.netloc + re.sub(r"/7656119\d{10}(?=/|$)", "/<STEAM_ID>", path)
+
+
+def short_error(response):
+    """Yanıttaki kısa hata açıklaması (Steam error/Error, Telegram description)."""
+    try:
+        data = response.json()
+    except ValueError:
+        data = None
+    if isinstance(data, dict):
+        for key in ("error", "Error", "description", "message"):
+            if data.get(key):
+                return " ".join(str(data[key]).split())[:150]
+    return response.reason or ""
+
+
 class HttpClient:
     def __init__(self):
         self.session = requests.Session()
@@ -52,6 +74,7 @@ class HttpClient:
 
     def request(self, method, url, *, service, **kwargs):
         max_attempts = STEAM_MAX_ATTEMPTS if service == "Steam" else MAX_ATTEMPTS
+        endpoint = safe_endpoint(url)
         for attempt in range(max_attempts):
             if service == "Steam":
                 time.sleep(max(0, REQUEST_DELAY - (time.monotonic() - self.last_steam_request)))
@@ -59,18 +82,22 @@ class HttpClient:
             wait = (STEAM_RETRY_BASE_SECONDS if service == "Steam" else 5) * (2 ** attempt)
             try:
                 response = self.session.request(method, url, timeout=TIMEOUT, **kwargs)
-            except requests.RequestException:
-                # requests istisnaları URL içindeki Telegram tokenını içerebilir.
-                if attempt == MAX_ATTEMPTS - 1:
-                    raise TrackerError(f"{service}: bağlantı kurulamadı veya zaman aşımı.") from None
+            except requests.RequestException as error:
+                # İstisna metni URL içindeki Telegram tokenını içerebilir; yalnızca türü yazılır.
+                reason = type(error).__name__
+                if attempt == max_attempts - 1:
+                    raise TrackerError(f"{service}: bağlantı kurulamadı veya zaman aşımı ({reason}, {endpoint}).") from None
             else:
-                if response.status_code not in (429, 500, 502, 503, 504):
-                    if not response.ok:
-                        if service == "Steam" and response.status_code in (401, 403):
-                            raise TrackerError("Steam erişimi reddetti. Envanter Public olmalı; IP engeli de olabilir.")
-                        raise TrackerError(f"{service}: HTTP {response.status_code}.")
+                if response.ok and response.status_code not in RETRYABLE_STATUS:
                     return response
                 retry = response.headers.get("Retry-After")
+                reason = f"HTTP {response.status_code} {short_error(response)}".strip()
+                if retry:
+                    reason += f", Retry-After={retry}"
+                if response.status_code not in RETRYABLE_STATUS:
+                    if service == "Steam" and response.status_code in (401, 403):
+                        raise TrackerError(f"Steam erişimi reddetti ({reason}, {endpoint}). Envanter Public olmalı; IP engeli de olabilir.")
+                    raise TrackerError(f"{service}: {reason} ({endpoint}).")
                 if retry:
                     try:
                         wait = max(wait, float(retry))
@@ -85,9 +112,11 @@ class HttpClient:
                     except (ValueError, TypeError, AttributeError):
                         pass
                 if attempt == max_attempts - 1 or wait > MAX_RETRY_WAIT:
-                    error_type = SteamRateLimitError if service == "Steam" and response.status_code == 429 else TrackerError
-                    raise error_type(f"{service}: istek sınırı veya geçici sunucu hatası (HTTP {response.status_code}).")
-            LOG.warning("%s geçici olarak yanıt vermiyor; %s saniye sonra yeniden deneniyor.", service, wait)
+                    if service == "Steam" and response.status_code == 429:
+                        raise SteamRateLimitError(f"Steam istek sınırı ({reason}, {endpoint}). GitHub Actions IP'si geçici olarak sınırlanmış olabilir; sonraki planlı çalıştırmada yeniden denenecek.")
+                    raise TrackerError(f"{service}: istek sınırı veya geçici sunucu hatası ({reason}, {endpoint}).")
+            LOG.warning("%s yanıt vermedi (%s, %s); %g saniye sonra yeniden deneniyor (deneme %s/%s).",
+                        service, reason, endpoint, wait, attempt + 1, max_attempts)
             time.sleep(wait)
         raise TrackerError(f"{service}: istek tamamlanamadı.")
 
@@ -96,7 +125,8 @@ class HttpClient:
         try:
             data = response.json()
         except ValueError:
-            raise TrackerError(f"{service}: geçerli JSON dönmedi.") from None
+            content_type = response.headers.get("Content-Type", "?").split(";")[0]
+            raise TrackerError(f"{service}: geçerli JSON dönmedi (HTTP {response.status_code}, {content_type}, {safe_endpoint(url)}).") from None
         if not isinstance(data, dict):
             raise TrackerError(f"{service}: beklenmeyen yanıt biçimi.")
         return data
@@ -112,7 +142,8 @@ def fetch_inventory(client, steam_id, *, metadata=None):
         page = client.json("GET", f"https://steamcommunity.com/inventory/{steam_id}/730/2",
                            service="Steam", params=params)
         if page.get("success") != 1:
-            raise TrackerError("Steam envanteri alınamadı. SteamID64, envanter gizliliği ve Steam erişimini kontrol edin.")
+            detail = f" (Steam: {' '.join(str(page['error']).split())[:150]})" if page.get("error") else ""
+            raise TrackerError(f"Steam envanteri alınamadı{detail}. SteamID64, envanter gizliliği ve Steam erişimini kontrol edin.")
         if "total_inventory_count" in page:
             count = int(page["total_inventory_count"])
             if expected is not None and count != expected:

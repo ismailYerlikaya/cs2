@@ -129,15 +129,17 @@ class TrackerTests(unittest.TestCase):
     @patch.object(t.time, "sleep")
     def test_retry_after_and_secret_redaction(self, sleep):
         client = t.HttpClient()
-        throttled = Mock(status_code=429, headers={"Retry-After": "12"})
+        throttled = Mock(status_code=429, ok=False, reason="Too Many Requests", headers={"Retry-After": "12"})
         good = Mock(status_code=200, ok=True)
         client.session.request = Mock(side_effect=[throttled, good])
         self.assertIs(client.request("GET", "https://example.invalid", service="TCMB"), good)
         sleep.assert_called_with(12)
         client.session.request = Mock(side_effect=requests.ConnectionError("secret-token-in-url"))
-        with self.assertRaises(t.TrackerError) as error:
-            client.request("POST", "https://example.invalid/secret", service="Telegram")
-        self.assertNotIn("secret", str(error.exception))
+        with self.assertRaises(t.TrackerError) as error, self.assertLogs(t.LOG, "WARNING") as logs:
+            client.request("POST", "https://api.telegram.org/botsecret-token/sendMessage", service="Telegram")
+        self.assertNotIn("secret", str(error.exception) + "".join(logs.output))
+        self.assertIn("ConnectionError", str(error.exception))
+        self.assertIn("api.telegram.org/bot***/sendMessage", logs.output[0])
         self.assertEqual(client.session.request.call_count, 3)
 
     @patch.object(t.time, "sleep")
@@ -150,15 +152,63 @@ class TrackerTests(unittest.TestCase):
         self.assertFalse(any(entry.args and entry.args[0] > 0 for entry in sleep.call_args_list))
 
     @patch.object(t.time, "sleep")
-    def test_steam_rate_limit_uses_long_exponential_backoff(self, sleep):
+    def test_steam_rate_limit_uses_short_exponential_backoff_and_logs_cause(self, sleep):
         client = t.HttpClient()
-        throttled = Mock(status_code=429, headers={})
+        throttled = Mock(status_code=429, ok=False, headers={}, reason="Too Many Requests", json=Mock(side_effect=ValueError))
         success = Mock(status_code=200, ok=True)
-        client.session.request = Mock(side_effect=[throttled, throttled, throttled, throttled, success])
-        self.assertIs(client.request("GET", "https://example.invalid", service="Steam"), success)
-        self.assertEqual(client.session.request.call_count, 5)
-        delays = [entry.args[0] for entry in sleep.call_args_list if entry.args and entry.args[0] in (30, 60, 120, 240)]
-        self.assertEqual(delays, [30, 60, 120, 240])
+        client.session.request = Mock(side_effect=[throttled, throttled, throttled, success])
+        url = "https://steamcommunity.com/inventory/76561197960287930/730/2"
+        with self.assertLogs(t.LOG, "WARNING") as logs:
+            self.assertIs(client.request("GET", url, service="Steam"), success)
+        self.assertEqual(client.session.request.call_count, 4)
+        delays = [entry.args[0] for entry in sleep.call_args_list if entry.args and entry.args[0] in (10, 20, 40)]
+        self.assertEqual(delays, [10, 20, 40])
+        self.assertIn("HTTP 429 Too Many Requests", logs.output[0])
+        self.assertIn("steamcommunity.com/inventory/<STEAM_ID>/730/2", logs.output[0])
+        self.assertNotIn("76561197960287930", "".join(logs.output))
+
+    @patch.object(t.time, "sleep")
+    def test_steam_rate_limit_gives_up_with_status(self, sleep):
+        client = t.HttpClient()
+        client.session.request = Mock(return_value=Mock(status_code=429, ok=False, headers={}, reason="Too Many Requests",
+                                                        json=Mock(return_value=None)))
+        with self.assertRaises(t.SteamRateLimitError) as error, self.assertLogs(t.LOG, "WARNING"):
+            client.request("GET", "https://steamcommunity.com/inventory/76561197960287930/730/2", service="Steam")
+        self.assertIn("HTTP 429", str(error.exception))
+        self.assertEqual(client.session.request.call_count, t.STEAM_MAX_ATTEMPTS)
+        self.assertLess(sum(entry.args[0] for entry in sleep.call_args_list if entry.args), 120)
+
+    @patch.object(t.time, "sleep")
+    def test_steam_forbidden_fails_without_retry(self, sleep):
+        client = t.HttpClient()
+        client.session.request = Mock(return_value=Mock(status_code=403, ok=False, headers={}, reason="Forbidden",
+                                                        json=Mock(return_value=None)))
+        with self.assertRaises(t.TrackerError) as error:
+            client.request("GET", "https://steamcommunity.com/inventory/76561197960287930/730/2", service="Steam")
+        self.assertIn("HTTP 403 Forbidden", str(error.exception))
+        self.assertEqual(client.session.request.call_count, 1)
+
+    @patch.object(t.time, "sleep")
+    def test_steam_timeout_retries_every_attempt(self, sleep):
+        client = t.HttpClient()
+        client.session.request = Mock(side_effect=requests.ReadTimeout("x"))
+        with self.assertRaises(t.TrackerError) as error, self.assertLogs(t.LOG, "WARNING") as logs:
+            client.request("GET", "https://steamcommunity.com/inventory/76561197960287930/730/2", service="Steam")
+        self.assertIn("ReadTimeout", str(error.exception))
+        self.assertEqual(client.session.request.call_count, t.STEAM_MAX_ATTEMPTS)
+        self.assertEqual(len(logs.output), t.STEAM_MAX_ATTEMPTS - 1)
+
+    def test_steam_error_text_and_non_json_are_reported(self):
+        page = {"success": 0, "error": "EYldRefreshAppIfNecessary failed with EResult 55"}
+        with self.assertRaises(t.TrackerError) as error:
+            t.fetch_inventory(Mock(json=Mock(return_value=page)), "76561197960287930")
+        self.assertIn("EResult 55", str(error.exception))
+        client = t.HttpClient()
+        html = Mock(status_code=200, ok=True, headers={"Content-Type": "text/html; charset=utf-8"}, json=Mock(side_effect=ValueError))
+        client.request = Mock(return_value=html)
+        with self.assertRaises(t.TrackerError) as error:
+            client.json("GET", "https://steamcommunity.com/market/priceoverview/", service="Steam")
+        self.assertIn("text/html", str(error.exception))
 
     @patch.object(t.time, "sleep")
     def test_all_major_alerts_and_telegram_size(self, sleep):

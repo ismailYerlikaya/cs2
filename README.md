@@ -93,7 +93,7 @@ Sonra **Settings → Actions → General → Workflow permissions** bölümünde
    - Telegram botundan rapor gelir.
    - `site/data/latest.json` içinde gerçek itemlar ve kontrol zamanı görünür.
    - `data/history.json` içine ölçüm eklenir.
-   - Repository'de `Update CS2 inventory prices` commit'i oluşur.
+   - Repository'de `chore: update Steam market data` commit'i oluşur.
 6. İlk raporda değişim boş olması normaldir. İkinci başarılı ölçümde önceki fiyatlarla kıyaslama başlar. İlkinden hemen sonra sürekli çalıştırmak Steam istek sınırına yol açabilir; sonraki planlı çalıştırmayı bekle.
 
 Plan: Türkiye saatiyle yaklaşık **00:07, 08:07, 16:07**. GitHub yoğunluğa bağlı geciktirebilir, bazı zamanlanmış çalıştırmalar atlanabilir. Dashboard ve Telegram bu nedenle sabit “son 8 saat” yerine gerçek ölçüm aralığını gösterir. Schedule varsayılan branch'teki dosyadan çalışır. Public depolarda 60 gün repository etkinliği olmazsa GitHub planlı iş akışını kapatabilir; kapanırsa Actions'tan yeniden etkinleştir.
@@ -103,7 +103,7 @@ Hata olduğunda kontrol et:
 | Hata / belirti | Yapılacak işlem |
 | --- | --- |
 | Envanter alınamadı / 403 | SteamID64 ve Public ayarlarını doğrula. Steam'in GitHub sunucusu IP'sine geçici kısıt koyması da mümkündür. Sonra yeniden dene. |
-| Steam 429 | Fiyatlar artık Steam'e ayrı ayrı sorulmaz; Steam envanteri yine erişilemiyorsa bir süre bekleyip sonraki çalıştırmada dene. |
+| Steam 429 | Log satırı `HTTP 429 …, steamcommunity.com/inventory/<STEAM_ID>/730/2` gösterir. Steam GitHub sunucu IP'sini geçici sınırlamıştır; 3 kısa yeniden denemeden sonra (10/20/40 sn) iş durur, JSON korunur, Telegram'a hata gider. Sonraki planlı çalıştırmayı bekle. |
 | Hiç fiyat alınamadı | Toplu fiyat dosyası veya item adlarını kontrol et. Eski JSON korunur; sıfır değerli rapor kaydedilmez. |
 | Bazı fiyatlar alınamadı | Kısmi toplam ve eksik item sayısı açıkça gösterilir; toplam değişim gizlenir. |
 | TCMB hatası | Eski/uydurma kur kullanılmaz. Servis düzeldiğinde tekrar çalıştır. Tatilde son yayımlanan kur kullanılır; 10 günden eski kur kabul edilmez. |
