@@ -29,19 +29,25 @@ TIMEOUT = (10, 25)
 MAX_RETRY_WAIT = 120  # Daha uzun Retry-After istenirse beklemeden hata verilir.
 RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 HISTORY_DAYS = 30
-PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"
+PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"  # Eski kayıtlarla karşılaştırma anahtarı; değiştirme.
 CSGOTRADER_URL = "https://prices.csgotrader.app/latest/steam.json"
-# CSROI'de Steam fiyatı olmayan itemlar (ör. Sticker Slab) için sırayla denenen kaynaklar.
-# Örnek ölçümde CSROI Steam'e %0–10 yakın; csgotrader ise %15–50 sapabildiği için en sonda.
+STEAM_PRICE_URL = "https://steamcommunity.com/market/priceoverview/"
+# Öncelik (collect_prices): ev bilgisayarının ≤12 saatlik doğrudan Steam fiyatı → CSROI → bu çalıştırmada
+# Steam → ≤7 günlük Steam → Skinport → csgotrader. 2026-10-02 örnek ölçümü (Steam'e göre): CSROI çoğunlukla
+# ±%5 (en kötü %15); Skinport ~%17 düşük; csgotrader %15–50 sapıyor.
 PRICE_BASES = {  # anahtar: (etiket, tahmini mi)
-    "csroi": ("CSROI · Steam son 24 saat", False),
     "steam": ("Steam Market (doğrudan)", False),
+    "csroi": ("CSROI · Steam son 24 saat", False),
     "steam_last": ("Son bilinen Steam fiyatı", True),
     "skinport": ("Skinport önerilen fiyatı", True),
     "csgotrader": ("csgotrader Steam ortalaması", True),
 }
+CSGOTRADER_PERIODS = {"last_24h": "24 saat", "last_7d": "7 gün", "last_30d": "30 gün", "last_90d": "90 gün"}
+STEAM_PRICE_FRESH_HOURS = 12
 STEAM_PRICE_MAX_AGE_DAYS = 7
 STEAM_PRICE_BUDGET_SECONDS = 300  # İş akışı adımının 8 dk sınırına sığsın.
+HOME_STEAM_DELAY = 6  # Ev IP'si: dakikada 10 sorgu, 170 item ≈ 17 dk. 3 sn aralık 429 getirdi.
+HOME_REFRESH_MIN_HOURS = 3  # Bundan yeni Steam fiyatı olan item yeniden sorulmaz.
 PRICE_URL = "https://csroi.com/pricing.json"
 WEB_API_INVENTORY_URL = "https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/"
 ROOT = Path(__file__).resolve().parent
@@ -87,8 +93,8 @@ class HttpClient:
         self.last_steam_request = 0.0
         self.steam_delay = REQUEST_DELAY
 
-    def request(self, method, url, *, service, **kwargs):
-        max_attempts = STEAM_MAX_ATTEMPTS if service == "Steam" else MAX_ATTEMPTS
+    def request(self, method, url, *, service, attempts=None, **kwargs):
+        max_attempts = attempts or (STEAM_MAX_ATTEMPTS if service == "Steam" else MAX_ATTEMPTS)
         endpoint = safe_endpoint(url)
         for attempt in range(max_attempts):
             if service == "Steam":
@@ -128,7 +134,7 @@ class HttpClient:
                         pass
                 if attempt == max_attempts - 1 or wait > MAX_RETRY_WAIT:
                     if service == "Steam" and response.status_code == 429:
-                        raise SteamRateLimitError(f"Steam istek sınırı ({reason}, {endpoint}). GitHub Actions IP'si geçici olarak sınırlanmış olabilir; sonraki planlı çalıştırmada yeniden denenecek.")
+                        raise SteamRateLimitError(f"Steam istek sınırı ({reason}, {endpoint}). Bu bağlantının IP'si geçici olarak sınırlanmış olabilir; sonraki çalıştırmada yeniden denenecek.")
                     raise TrackerError(f"{service}: istek sınırı veya geçici sunucu hatası ({reason}, {endpoint}).")
             LOG.warning("%s yanıt vermedi (%s, %s); %g saniye sonra yeniden deneniyor (deneme %s/%s).",
                         service, reason, endpoint, wait, attempt + 1, max_attempts)
@@ -247,27 +253,20 @@ def parse_usd_price(value):
 
 
 def fetch_market_price(client, market_hash_name):
-    """Değiştirilebilir fiyat kaynağı: en düşük güncel ilan fiyatı, USD.
+    """Steam'in kendi fiyatı: en düşük güncel ilan ("Starting at"), USD. Medyan ve hacim bilgi içindir.
 
     Median satış fiyatı ayrı bir ölçüdür; lowest_price yoksa onunla doldurulmaz.
+    Tek deneme: 429 sırasında yeniden denemek sınırı uzatır; çağıran taraf durur.
     """
-    result = client.json("GET", "https://steamcommunity.com/market/priceoverview/", service="Steam",
+    result = client.json("GET", STEAM_PRICE_URL, service="Steam", attempts=1,
                          params={"appid": 730, "currency": 1, "country": "US", "l": "english",
                                  "market_hash_name": market_hash_name})
     if not result.get("success") or not result.get("lowest_price"):
         raise TrackerError("Steam güncel satış ilanı fiyatı göndermedi.")
-    return parse_usd_price(result["lowest_price"])
-
-
-def fetch_steam_price(client, market_hash_name):
-    """Steam'in son 24 saat medyan satış fiyatı; satış yoksa en düşük ilan fiyatı."""
-    result = client.json("GET", "https://steamcommunity.com/market/priceoverview/", service="Steam",
-                         params={"appid": 730, "currency": 1, "country": "US", "l": "english",
-                                 "market_hash_name": market_hash_name})
-    for field, kind in (("median_price", "median"), ("lowest_price", "lowest")):
-        if result.get("success") and result.get(field):
-            return parse_usd_price(result[field]), kind
-    raise TrackerError("Steam fiyat göndermedi.")
+    volume = re.sub(r"\D", "", str(result.get("volume") or ""))
+    return {"usd": parse_usd_price(result["lowest_price"]),
+            "median": parse_usd_price(result["median_price"]) if result.get("median_price") else None,
+            "volume": int(volume) if volume else None}
 
 
 def fetch_steam_prices(client, names, budget=STEAM_PRICE_BUDGET_SECONDS):
@@ -278,10 +277,10 @@ def fetch_steam_prices(client, names, budget=STEAM_PRICE_BUDGET_SECONDS):
             LOG.warning("Steam fiyat sorguları süre sınırına ulaştı (%s/%s item).", index, len(names))
             break
         try:
-            found[name] = fetch_steam_price(client, name)
+            found[name] = {**fetch_market_price(client, name), "checked_at": datetime.now(timezone.utc).isoformat()}
             failures = 0
         except SteamRateLimitError as error:
-            LOG.warning("Steam fiyat sorguları %s/%s itemda durdu (%s); kalanlar için yedek kaynak kullanılacak.", index, len(names), error)
+            LOG.warning("Steam fiyat sorguları %s/%s itemda durdu (%s).", index, len(names), error)
             break
         except TrackerError as error:
             LOG.warning("Steam %s için fiyat vermedi (%s).", name, error)
@@ -292,7 +291,7 @@ def fetch_steam_prices(client, names, budget=STEAM_PRICE_BUDGET_SECONDS):
 
 
 def read_steam_prices():
-    """Doğrudan Steam'den alınmış son fiyatlar: {ad: {usd, kind, checked_at}}."""
+    """Doğrudan Steam'den alınmış son fiyatlar: {ad: {usd, median, volume, checked_at}}."""
     try:
         data = json.loads(STEAM_PRICES_PATH.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -300,18 +299,35 @@ def read_steam_prices():
     except ValueError:
         LOG.warning("data/steam_prices.json okunamadı; Steam fiyat önbelleği yok sayıldı.")
         return {}
-    return {name: entry for name, entry in data.items()
-            if isinstance(entry, dict) and isinstance(entry.get("usd"), (int, float)) and isinstance(entry.get("checked_at"), str)} \
-        if isinstance(data, dict) else {}
+    cache = {}
+    for name, entry in data.items() if isinstance(data, dict) else ():
+        try:
+            if isinstance(entry["usd"], (int, float)) and entry["usd"] > 0 and datetime.fromisoformat(entry["checked_at"]).tzinfo:
+                cache[name] = entry
+        except (KeyError, TypeError, ValueError):
+            pass
+    return cache
 
 
 def store_steam_prices(cache, found, now):
-    stamp = now.isoformat()
-    for name, (usd, kind) in found.items():
-        cache[name] = {"usd": float(usd), "kind": kind, "checked_at": stamp}
+    for name, entry in found.items():
+        cache[name] = {"usd": float(entry["usd"]), "median": float(entry["median"]) if entry["median"] is not None else None,
+                       "volume": entry["volume"], "checked_at": entry["checked_at"]}
     cutoff = now - timedelta(days=HISTORY_DAYS)
     write_json(STEAM_PRICES_PATH, {name: cache[name] for name in sorted(cache)
                                    if datetime.fromisoformat(cache[name]["checked_at"]) >= cutoff})
+
+
+def steam_refresh_order(now):
+    """Ev bilgisayarında sorulacaklar: hiç sorulmamışlar, sonra en eski fiyatlılar.
+
+    Steam sınırı bir turu yarıda keserse sonraki tur kalanlardan devam eder.
+    """
+    oldest = datetime.min.replace(tzinfo=timezone.utc)
+    checked = {name: datetime.fromisoformat(entry["checked_at"]) for name, entry in read_steam_prices().items()}
+    names = [item["market_hash_name"] for item in json.loads(LATEST_PATH.read_text(encoding="utf-8"))["items"]]
+    due = [name for name in names if checked.get(name, oldest) < now - timedelta(hours=HOME_REFRESH_MIN_HOURS)]
+    return sorted(due, key=lambda name: checked.get(name, oldest))
 
 
 def fetch_csgotrader_prices(client, names):
@@ -328,21 +344,39 @@ def fetch_csgotrader_prices(client, names):
 
 
 def collect_prices(client, inventory, now):
-    """Her item için en doğru kaynaktan fiyat: {ad: (usd, kaynak, tarih/dönem)}."""
-    skinport = {}
-    quotes = {name: (usd, "csroi", None) for name, usd in fetch_bulk_market_prices(client, inventory, estimates=skinport).items()}
-    pending = lambda: [x["market_hash_name"] for x in inventory if x["market_hash_name"] not in quotes]
-    if not pending():
-        return quotes
+    """Her item için en doğru kaynaktan fiyat: {ad: (usd, kaynak, tarih/dönem)}. Sıra PRICE_BASES üstünde."""
     cache = read_steam_prices()
-    LOG.info("%s item CSROI'de yok; Steam'den doğrudan soruluyor.", len(pending()))
-    found = fetch_steam_prices(client, pending())
-    quotes.update({name: (usd, "steam", now.isoformat()) for name, (usd, _) in found.items()})
-    store_steam_prices(cache, found, now)
-    for name in pending():
+
+    def cached(name, max_age):
         entry = cache.get(name)
-        if entry and now - datetime.fromisoformat(entry["checked_at"]) <= timedelta(days=STEAM_PRICE_MAX_AGE_DAYS):
-            quotes[name] = (Decimal(str(entry["usd"])), "steam_last", entry["checked_at"])
+        if entry and now - datetime.fromisoformat(entry["checked_at"]) <= max_age:
+            return Decimal(str(entry["usd"])), entry["checked_at"]
+        return None
+
+    quotes = {}
+    for entry in inventory:
+        hit = cached(entry["market_hash_name"], timedelta(hours=STEAM_PRICE_FRESH_HOURS))
+        if hit:
+            quotes[entry["market_hash_name"]] = (hit[0], "steam", hit[1])
+    pending = lambda: [x["market_hash_name"] for x in inventory if x["market_hash_name"] not in quotes]
+    skinport = {}
+    if pending():
+        try:
+            names = set(pending())
+            csroi = fetch_bulk_market_prices(client, [x for x in inventory if x["market_hash_name"] in names], estimates=skinport)
+            quotes.update({name: (usd, "csroi", None) for name, usd in csroi.items()})
+        except TrackerError as error:
+            LOG.warning("CSROI fiyatları alınamadı (%s); diğer kaynaklar deneniyor.", error)
+    if pending():
+        LOG.info("%s item için güncel fiyat yok; Steam'e doğrudan soruluyor.", len(pending()))
+        found = fetch_steam_prices(client, pending())
+        quotes.update({name: (entry["usd"], "steam", entry["checked_at"]) for name, entry in found.items()})
+        if found:
+            store_steam_prices(cache, found, now)
+    for name in pending():
+        hit = cached(name, timedelta(days=STEAM_PRICE_MAX_AGE_DAYS))
+        if hit:
+            quotes[name] = (hit[0], "steam_last", hit[1])
         elif name in skinport:
             quotes[name] = (skinport[name], "skinport", None)
     if pending():
@@ -418,6 +452,15 @@ def alarm(change):
     return None
 
 
+def price_label(basis, as_of):
+    label = PRICE_BASES[basis][0]
+    if basis in ("steam", "steam_last") and as_of:
+        return f"{label} · {datetime.fromisoformat(as_of).astimezone(TR_TIME):%d.%m %H:%M}"
+    if basis == "csgotrader" and as_of:
+        return f"{label} · {CSGOTRADER_PERIODS.get(as_of, as_of)}"
+    return label
+
+
 def price_basis(item):
     """Eski kayıtlarda price_basis yok: o zamanlar tek kaynak CSROI idi."""
     return item.get("price_basis") or ("skinport" if item.get("price_estimated") else "csroi")
@@ -442,7 +485,7 @@ def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None
         old = old_item.get("current_price") if old_item and price_basis(old_item) == basis else None
         change = percent(current, old) if current is not None else None
         items.append({**entry, "price_usd": float(usd) if usd is not None else None,
-                      "price_basis": basis, "price_label": PRICE_BASES[basis][0] if basis else None,
+                      "price_basis": basis, "price_label": price_label(basis, as_of) if basis else None,
                       "price_as_of": as_of, "price_estimated": bool(basis and PRICE_BASES[basis][1]),
                       "previous_price": old, "current_price": current,
                       "change_percent": change, "alarm": alarm(change),
@@ -468,6 +511,8 @@ def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None
     comparable = same_price_source and bool(new_sum or old_sum)
     difference = money(new_sum - old_sum) if comparable else None
     elapsed = (now - datetime.fromisoformat(previous["checked_at"])).total_seconds() / 3600 if previous else None
+    bases = {basis: sum(item["price_basis"] == basis for item in items)
+             for basis in PRICE_BASES if any(item["price_basis"] == basis for item in items)}
     return {"schema_version": 1, "status": "ok" if complete else "partial", "currency": "TRY",
             "checked_at": now.isoformat(), "previous_checked_at": previous["checked_at"] if same_price_source else None,
             "price_source": price_source,
@@ -478,8 +523,8 @@ def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None
             "complete": complete, "missing_prices": missing, "unavailable_assets": unavailable,
             "estimated_items": sum(item["price_estimated"] for item in items),
             "estimated_value": money(sum((Decimal(str(item["total_value"])) for item in items if item["price_estimated"]), Decimal(0))),
-            "price_bases": {basis: sum(item["price_basis"] == basis for item in items)
-                            for basis in PRICE_BASES if any(item["price_basis"] == basis for item in items)},
+            "price_bases": bases,
+            "price_summary": " · ".join(f"{PRICE_BASES[basis][0]} {count}" for basis, count in bases.items()),
             "inventory_counts": inventory_metadata or {}, "unique_items": len(items),
             "quantity": sum(item["quantity"] for item in items),
             "inventory_changed": previous is not None and {x["market_hash_name"]: x["quantity"] for x in items}
@@ -533,11 +578,14 @@ def tl(value):
 
 
 def make_report(snapshot):
-    lines = ["📊 CS2 MARKET RAPORU", "", "Fiyat kaynağı: " + snapshot.get("price_source", "Steam Community Market"),
+    lines = ["📊 CS2 MARKET RAPORU", "",
              "💰 " + ("Fiyatı alınabilenlerin değeri" if not snapshot["complete"] else "Envanter Değeri"),
-             tl(snapshot["total_value"])]
-    if snapshot.get("price_bases"):
-        lines.append("Fiyatlar: " + " · ".join(f"{PRICE_BASES[basis][0]} {count}" for basis, count in snapshot["price_bases"].items()))
+             tl(snapshot["total_value"]),
+             "Fiyatlar: " + (snapshot.get("price_summary") or snapshot.get("price_source", "Steam Community Market"))]
+    steam_times = [datetime.fromisoformat(x["price_as_of"]) for x in snapshot["items"] if x.get("price_basis") == "steam"]
+    if steam_times:
+        lines.append(f"🎯 Doğrudan Steam fiyatları: {min(steam_times).astimezone(TR_TIME):%d.%m %H:%M} – "
+                     f"{max(steam_times).astimezone(TR_TIME):%d.%m %H:%M} arası (en düşük ilan)")
     if snapshot.get("estimated_items"):
         lines.append(f"≈ {tl(snapshot['estimated_value'])} kısmı tahmini ({snapshot['estimated_items']} item)")
     if snapshot["change_value"] is not None:
@@ -547,7 +595,8 @@ def make_report(snapshot):
         if snapshot.get("change_excluded_items"):
             lines.append(f"({snapshot['change_excluded_items']} item iki kontrolde aynı kaynaktan fiyatlanamadığı için hariç)")
     else:
-        lines.extend(["", "İlk ölçüm veya eksik veri nedeniyle toplam değişim hesaplanamadı."])
+        lines.extend(["", "Önceki kontrolle aynı kaynaktan fiyatlanan item olmadığı için toplam değişim hesaplanamadı."
+                      if snapshot.get("previous_checked_at") else "İlk ölçüm; toplam değişim sonraki kontrolde hesaplanır."])
     changed = [x for x in snapshot["items"] if x["change_percent"] is not None]
     for title, rows in [("🔥 En Çok Yükselenler", sorted([x for x in changed if x["change_percent"] > 0], key=lambda x: -x["change_percent"])[:5]),
                         ("🔻 En Çok Düşenler", sorted([x for x in changed if x["change_percent"] < 0], key=lambda x: x["change_percent"])[:5])]:
@@ -571,7 +620,7 @@ def make_report(snapshot):
     if snapshot["inventory_changed"]:
         lines.append("📦 Envanter içeriği/adetleri değişti; toplam fark yalnızca fiyat hareketi değildir.")
     lines.extend([f"USD → TL: TCMB {snapshot['fx']['date']} · {snapshot['fx']['usd_try']:g}",
-                  "TL değişimi döviz kuru etkisini de içerir. Son 24 saat fiyatı gösterge niteliğindedir; anlık ilan veya net satış tutarı değildir.",
+                  "TL değişimi döviz kuru etkisini de içerir. Fiyatlar alıcının ödediği tutardır (Steam: en düşük ilan, CSROI: son 24 saat satış); satışta Steam kesintisi (~%13) düşülür.",
                   "🕒 Son kontrol: " + datetime.fromisoformat(snapshot["checked_at"]).astimezone(TR_TIME).strftime("%d.%m.%Y %H:%M")])
     # Normal rapor kısa tutulur; ilk 5 listelerine girmeyen önemli hareketler de kaybolmaz.
     top_names = {x["market_hash_name"] for x in sorted([x for x in changed if x["change_percent"] > 0], key=lambda x: -x["change_percent"])[:5]}
@@ -607,7 +656,7 @@ def main():
     parser.add_argument("--check-inventory", action="store_true", help="Yalnızca gerçek envanteri kontrol et; JSON yazma ve mesaj gönderme.")
     parser.add_argument("--check-price", metavar="MARKET_HASH_NAME", help="Tek item için gerçek USD fiyatını ve TCMB dönüşümünü kontrol et.")
     parser.add_argument("--refresh-steam-prices", action="store_true",
-                        help="CSROI'de olmayan itemların fiyatını bu bilgisayardan Steam'e sor ve data/steam_prices.json'a yaz.")
+                        help="Tüm itemların fiyatını bu bilgisayardan doğrudan Steam'e sor (eksik/eski olanlar önce) ve data/steam_prices.json'a yaz.")
     args = parser.parse_args()
     load_dotenv(ROOT / ".env")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -619,18 +668,19 @@ def main():
     try:
         now = datetime.now(timezone.utc)
         if args.check_price:
-            usd = fetch_market_price(client, args.check_price)
+            quote = fetch_market_price(client, args.check_price)
             fx = fetch_exchange_rate(client, now)
-            LOG.info("Gerçek Steam ilan fiyatı: %s USD · %s · Kur tarihi: %s", usd, tl(money(usd * Decimal(str(fx["usd_try"])))), fx["date"])
+            LOG.info("Steam en düşük ilan: %s USD · %s · 24 saat medyan: %s · 24 saatte satış: %s · Kur tarihi: %s",
+                     quote["usd"], tl(money(quote["usd"] * Decimal(str(fx["usd_try"])))), quote["median"] or "—", quote["volume"] or "—", fx["date"])
             return 0
         if args.refresh_steam_prices:
-            # GitHub'a Steam fiyat sorguları engelli; ev bağlantısından alınanlar 7 gün kullanılır.
-            latest = json.loads(LATEST_PATH.read_text(encoding="utf-8"))
-            names = [item["market_hash_name"] for item in latest["items"] if price_basis(item) != "csroi" or item["price_usd"] is None]
-            LOG.info("%s item Steam'e soruluyor (yaklaşık %s dakika).", len(names), round(len(names) * 5 / 60))
-            client.steam_delay = 5  # Ev IP'si de dakikada ~20 sorguda sınırlanıyor.
+            # GitHub'a Steam fiyat sorguları kapalı; ev bağlantısından alınanlar 12 saat birinci kaynaktır.
+            names = steam_refresh_order(now)
+            LOG.info("%s item Steam'e soruluyor (yaklaşık %s dakika).", len(names), round(len(names) * HOME_STEAM_DELAY / 60))
+            client.steam_delay = HOME_STEAM_DELAY
             found = fetch_steam_prices(client, names, budget=None)
-            store_steam_prices(read_steam_prices(), found, now)
+            if found:
+                store_steam_prices(read_steam_prices(), found, now)
             LOG.info("%s/%s item için Steam fiyatı kaydedildi.", len(found), len(names))
             return 0
         steam_id = os.getenv("STEAM_ID", "").strip()
@@ -679,7 +729,7 @@ def main():
     except (TrackerError, OSError, ValueError, KeyError, TypeError, ArithmeticError) as error:
         safe_message = str(error) if isinstance(error, TrackerError) else "Veri işlenemedi veya dosyaya yazılamadı; dosya izinlerini ve veri biçimini kontrol edin."
         LOG.error("%s", safe_message)
-        if notify and token and chat_id and not args.check_inventory and not args.check_price:
+        if notify and token and chat_id and not args.check_inventory and not args.check_price and not args.refresh_steam_prices:
             try:
                 send_telegram(client, token, chat_id, "⚠️ CS2 takip kontrolü tamamlanamadı.\n" + safe_message + "\nSon başarılı veri tarihi dashboard'da gösterilir.")
             except TrackerError:

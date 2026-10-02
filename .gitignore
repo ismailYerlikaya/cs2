@@ -7,3 +7,5 @@ __pycache__/
 *.json.tmp
 .netlify/
 site/source.json
+home_steam_prices.log*
+.home-job-clone

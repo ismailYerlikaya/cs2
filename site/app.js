@@ -102,7 +102,7 @@ function render(data) {
   snapshot = data;
   $("total-label").textContent = data.complete ? "TOPLAM ENVANTER DEĞERİ" : "FİYATI ALINABİLENLERİN DEĞERİ";
   $("total").textContent = money(data.total_value);
-  $("total-note").textContent = data.complete ? `${data.price_source || "Steam Market"} · TL karşılığı` : "Yalnızca erişilen ve fiyatı alınabilen itemlar";
+  $("total-note").textContent = data.complete ? "Tüm itemlar · TL karşılığı" : "Yalnızca erişilen ve fiyatı alınabilen itemlar";
   $("change").textContent = percent(data.change_percent);
   $("change").className = `metric-value ${direction(data.change_percent)}`;
   $("change-note").textContent = data.change_value != null ? `${data.change_value > 0 ? "+" : ""}${money(data.change_value)} · ${number.format(data.interval_hours)} saat önceye göre${data.change_excluded_items ? ` · ${data.change_excluded_items} item hariç` : ""}` : data.previous_checked_at ? "Eksik veri nedeniyle karşılaştırılamıyor." : "İlk ölçüm. Karşılaştırma için iki tam ölçüm gerekir.";
@@ -110,7 +110,7 @@ function render(data) {
   $("quantity").textContent = `${number.format(data.quantity)} adet · ${data.missing_prices} eksik fiyat`;
   const checked = new Date(data.checked_at);
   $("last-update").textContent = "Son kontrol: " + new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Istanbul" }).format(checked) + " · Türkiye saati";
-  $("fx").textContent = `${data.price_source || "Steam Community Market"} · TCMB ${data.fx.date} · 1 USD = ${number.format(data.fx.usd_try)} TL`;
+  $("fx").textContent = `Fiyatlar: ${data.price_summary || data.price_source || "Steam Community Market"} · TCMB ${data.fx.date} · 1 USD = ${number.format(data.fx.usd_try)} TL`;
   const comparable = data.items.filter((item) => item.change_percent != null);
   renderMovers("gainers", comparable.filter((item) => item.change_percent > 0).sort((a, b) => b.change_percent - a.change_percent).slice(0, 5));
   renderMovers("losers", comparable.filter((item) => item.change_percent < 0).sort((a, b) => a.change_percent - b.change_percent).slice(0, 5));

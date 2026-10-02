@@ -106,7 +106,7 @@ Hata olduğunda kontrol et:
 | Envanter alınamadı / 403 | SteamID64 ve Public ayarlarını doğrula. Steam'in GitHub sunucusu IP'sine geçici kısıt koyması da mümkündür. Sonra yeniden dene. |
 | Steam 429 | Steam GitHub sunucu IP'sini sınırlamıştır. Daha önce en az bir başarılı kayıt varsa son bilinen envanter kullanılır, fiyatlar yine güncellenir ve rapor bunu belirtir; envanter Steam izin verdiğinde kendiliğinden yenilenir. Hiç kayıt yoksa planlı çalıştırmalar saatlik olarak sessizce tekrar dener (Telegram'a hata yalnızca elle çalıştırmada gider). İsteğe bağlı `STEAM_API_KEY` bu engeli tamamen aşabilir. |
 | Hiç fiyat alınamadı | Toplu fiyat dosyası veya item adlarını kontrol et. Eski JSON korunur; sıfır değerli rapor kaydedilmez. |
-| Bazı itemların CSROI'de Steam fiyatı yok (ör. Sticker Slab) | Sırayla: Steam'e doğrudan sorulur (GitHub'da genelde 429) → `data/steam_prices.json`'daki ≤7 günlük Steam fiyatı → Skinport → csgotrader. Steam dışındakiler "tahmini" etiketlidir. Önbelleği ev bağlantısından tazelemek için: `python tracker.py --refresh-steam-prices` (secret gerekmez). Toplam değişim yalnızca iki kontrolde de aynı kaynaktan fiyatı olan itemlar üzerinden hesaplanır. |
+| Bazı itemların CSROI'de Steam fiyatı yok (ör. Sticker Slab) | Fiyat sırası: ev bilgisayarının ≤12 saatlik doğrudan Steam fiyatı → CSROI → Steam'e doğrudan sorgu (GitHub'da genelde 429) → ≤7 günlük Steam fiyatı → Skinport → csgotrader. Steam/CSROI dışındakiler "tahmini" etiketlidir. Toplam değişim yalnızca iki kontrolde de aynı kaynaktan fiyatı olan itemlar üzerinden hesaplanır. Aşağıdaki "Doğrudan Steam fiyatları" bölümüne bak. |
 | TCMB hatası | Eski/uydurma kur kullanılmaz. Servis düzeldiğinde tekrar çalıştır. Tatilde son yayımlanan kur kullanılır; 10 günden eski kur kabul edilmez. |
 | Telegram 400 / 401 / 403 | Token ve chat ID'yi kontrol et; bot sohbetinde `/start` gönder ve engeli kaldır. Alınmış fiyatlar Telegram hata verse de commit edilir, Actions kırmızı kalır. |
 | JSON commit/push reddedildi | Workflow yazma iznini ve branch kurallarını kontrol et. |
@@ -168,6 +168,18 @@ Copy-Item .env.example .env
 ```
 
 `index.html` dosyasına çift tıklayarak açma; tarayıcı JSON okumayı engelleyebilir. Yerel önizlemede `source.json` yoksa otomatik olarak yerel `data/latest.json` okunur.
+
+## Doğrudan Steam fiyatları (ev bilgisayarı)
+
+Steam'in resmî fiyat API'si yoktur; fiyat item item `priceoverview` ile sorulur ve Steam bunu IP'ye göre sınırlar. GitHub Actions IP'leri kapalıdır, ev bağlantısı dakikada ~10 sorguya izinlidir. Bu yüzden Windows Görev Zamanlayıcı'daki **CS2 Steam fiyatlari** görevi 4 saatte bir `home_steam_prices.py` dosyasını çalıştırır:
+
+- Ayrı klonda çalışır (`%LOCALAPPDATA%\cs2-tracker`, içinde `.home-job-clone` işareti); her turda `origin/main`'e eşitlenir.
+- Envanterdeki tüm itemları 6 sn arayla Steam'e sorar (hiç sorulmamış/en eski olan önce, 3 saatten yeni olanlar atlanır). İlk 429'da durur, kalanlar sonraki turda devam eder.
+- Değer: Steam'in gösterdiği en düşük ilan ("Starting at"); 24 saatlik medyan ve satış adedi de `data/steam_prices.json`'a yazılır.
+- Sonucu commit edip gönderir; bu push iş akışını tetikler, 7,5 saat dolduysa rapor taze Steam fiyatlarıyla hazırlanır.
+- Bilgisayar kapalıysa GitHub kendi sırasıyla (CSROI ve yedekler) çalışmaya devam eder. Günlük: `%LOCALAPPDATA%\cs2-tracker\home_steam_prices.log`.
+
+Kaldırmak için PowerShell: `Unregister-ScheduledTask -TaskName "CS2 Steam fiyatlari" -Confirm:$false` ve klasörü sil. Elle tek tur (commit etmez): `python tracker.py --refresh-steam-prices`.
 
 ## Küçük ayarlar ve davranışlar
 

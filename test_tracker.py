@@ -111,44 +111,82 @@ class TrackerTests(unittest.TestCase):
         # Tahminden gerçek Steam fiyatına geçiş sahte hareket sayılmaz.
         later = t.build_snapshot(inventory, {"Case": Decimal("1.1"), "Slab": (Decimal("3"), "steam", NOW.isoformat())}, FX, after, NOW + timedelta(hours=8))
         self.assertFalse(later["items"][1]["price_estimated"])
+        self.assertEqual(later["items"][1]["price_label"], "Steam Market (doğrudan) · 01.10 15:00")
+        self.assertIn("🎯 Doğrudan Steam fiyatları: 01.10 15:00 – 01.10 15:00", t.make_report(later))
         self.assertIsNone(later["items"][1]["change_percent"])
         self.assertEqual(later["change_value"], 0)
 
-    def test_steam_price_prefers_median_then_lowest(self):
-        client = Mock(json=Mock(side_effect=[{"success": True, "median_price": "$1.20", "lowest_price": "$1.30"},
-                                             {"success": True, "lowest_price": "$0.96"}, {"success": False}]))
-        self.assertEqual(t.fetch_steam_price(client, "A"), (Decimal("1.20"), "median"))
-        self.assertEqual(t.fetch_steam_price(client, "B"), (Decimal("0.96"), "lowest"))
-        with self.assertRaises(t.TrackerError):
-            t.fetch_steam_price(client, "C")
+    def test_market_price_is_lowest_listing_with_median_and_volume(self):
+        client = Mock(json=Mock(return_value={"success": True, "lowest_price": "$1.30", "median_price": "$1.20", "volume": "1,698"}))
+        self.assertEqual(t.fetch_market_price(client, "A"), {"usd": Decimal("1.30"), "median": Decimal("1.20"), "volume": 1698})
+        self.assertEqual(client.json.call_args.kwargs["attempts"], 1)
+        client.json.return_value = {"success": True, "lowest_price": "$0.96"}
+        self.assertEqual(t.fetch_market_price(client, "B"), {"usd": Decimal("0.96"), "median": None, "volume": None})
+
+    @patch.object(t.time, "sleep")
+    def test_price_queries_stop_at_first_rate_limit_without_retrying(self, sleep):
+        client = t.HttpClient()
+        client.session.request = Mock(return_value=Mock(status_code=429, ok=False, headers={}, reason="Too Many Requests",
+                                                        json=Mock(return_value=None)))
+        with self.assertLogs(t.LOG, "WARNING") as logs:
+            self.assertEqual(t.fetch_steam_prices(client, ["A", "B"]), {})
+        self.assertEqual(client.session.request.call_count, 1)
+        self.assertIn("0/2 itemda durdu", logs.output[0])
 
     def test_steam_prices_stop_at_rate_limit(self):
-        with patch.object(t, "fetch_steam_price", side_effect=[(Decimal("1"), "median"), t.SteamRateLimitError("429"), (Decimal("2"), "median")]) as fetch, \
+        quote = {"usd": Decimal("1"), "median": None, "volume": 3}
+        with patch.object(t, "fetch_market_price", side_effect=[quote, t.SteamRateLimitError("429"), quote]) as fetch, \
              self.assertLogs(t.LOG, "WARNING"):
-            self.assertEqual(t.fetch_steam_prices(Mock(), ["A", "B", "C"]), {"A": (Decimal("1"), "median")})
+            found = t.fetch_steam_prices(Mock(), ["A", "B", "C"])
+        self.assertEqual(list(found), ["A"])
+        self.assertEqual(found["A"]["usd"], Decimal("1"))
+        self.assertIn("checked_at", found["A"])
         self.assertEqual(fetch.call_count, 2)
 
     def test_collect_prices_uses_best_source_in_order(self):
-        inventory = [item(name) for name in ["Csroi", "Live", "Cached", "Old", "Skin", "Last"]]
+        inventory = [item(name) for name in ["Fresh", "Csroi", "Live", "Cached", "Old", "Skin", "Last"]]
         def bulk(client, inventory, estimates):
+            self.assertNotIn("Fresh", [x["market_hash_name"] for x in inventory])
             estimates.update({"Old": Decimal("0.4"), "Skin": Decimal("0.5")})
             return {"Csroi": Decimal("1")}
-        cache = {"Cached": {"usd": 0.7, "kind": "lowest", "checked_at": (NOW - timedelta(days=2)).isoformat()},
-                 "Old": {"usd": 0.9, "kind": "lowest", "checked_at": (NOW - timedelta(days=8)).isoformat()}}
+        stamp = lambda **age: (NOW - timedelta(**age)).isoformat()
+        cache = {"Fresh": {"usd": 5.0, "median": None, "volume": 3, "checked_at": stamp(hours=2)},
+                 "Csroi": {"usd": 9.0, "median": None, "volume": None, "checked_at": stamp(hours=13)},
+                 "Cached": {"usd": 0.7, "median": None, "volume": None, "checked_at": stamp(days=2)},
+                 "Old": {"usd": 0.9, "median": None, "volume": None, "checked_at": stamp(days=8)}}
+        live = {"usd": Decimal("2"), "median": Decimal("1.9"), "volume": 4, "checked_at": NOW.isoformat()}
         with tempfile.TemporaryDirectory() as folder, patch.object(t, "STEAM_PRICES_PATH", Path(folder) / "steam_prices.json"):
             t.write_json(t.STEAM_PRICES_PATH, cache)
             with patch.object(t, "fetch_bulk_market_prices", side_effect=bulk), \
-                 patch.object(t, "fetch_steam_prices", return_value={"Live": (Decimal("2"), "median")}) as steam, \
+                 patch.object(t, "fetch_steam_prices", return_value={"Live": live}) as steam, \
                  patch.object(t, "fetch_csgotrader_prices", return_value={"Last": (Decimal("3"), "last_7d")}) as csgotrader:
                 quotes = t.collect_prices(Mock(), inventory, NOW)
             self.assertEqual(steam.call_args.args[1], ["Live", "Cached", "Old", "Skin", "Last"])
             self.assertEqual(csgotrader.call_args.args[1], ["Last"])
             self.assertEqual({name: quote[:2] for name, quote in quotes.items()}, {
-                "Csroi": (Decimal("1"), "csroi"), "Live": (Decimal("2"), "steam"), "Cached": (Decimal("0.7"), "steam_last"),
-                "Old": (Decimal("0.4"), "skinport"), "Skin": (Decimal("0.5"), "skinport"), "Last": (Decimal("3"), "csgotrader")})
+                "Fresh": (Decimal("5"), "steam"), "Csroi": (Decimal("1"), "csroi"), "Live": (Decimal("2"), "steam"),
+                "Cached": (Decimal("0.7"), "steam_last"), "Old": (Decimal("0.4"), "skinport"),
+                "Skin": (Decimal("0.5"), "skinport"), "Last": (Decimal("3"), "csgotrader")})
             saved = json.loads(t.STEAM_PRICES_PATH.read_text(encoding="utf-8"))
-            self.assertEqual(saved["Live"], {"usd": 2.0, "kind": "median", "checked_at": NOW.isoformat()})
+            self.assertEqual(saved["Live"], {"usd": 2.0, "median": 1.9, "volume": 4, "checked_at": NOW.isoformat()})
             self.assertIn("Old", saved)
+
+    def test_collect_prices_survives_csroi_outage(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(t, "STEAM_PRICES_PATH", Path(folder) / "steam_prices.json"):
+            with patch.object(t, "fetch_bulk_market_prices", side_effect=t.TrackerError("CSROI: HTTP 503")), \
+                 patch.object(t, "fetch_steam_prices", return_value={}), \
+                 patch.object(t, "fetch_csgotrader_prices", return_value={"Case": (Decimal("1.5"), "last_24h")}), \
+                 self.assertLogs(t.LOG, "WARNING"):
+                self.assertEqual(t.collect_prices(Mock(), [item()], NOW), {"Case": (Decimal("1.5"), "csgotrader", "last_24h")})
+            self.assertFalse(t.STEAM_PRICES_PATH.exists())
+
+    def test_home_refresh_asks_missing_then_oldest_and_skips_recent(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(t, "STEAM_PRICES_PATH", Path(folder) / "steam_prices.json"), \
+             patch.object(t, "LATEST_PATH", Path(folder) / "latest.json"):
+            t.write_json(t.LATEST_PATH, {"items": [item(name) for name in ["Recent", "Old", "Older", "New"]]})
+            t.write_json(t.STEAM_PRICES_PATH, {name: {"usd": 1, "checked_at": (NOW - age).isoformat()} for name, age in
+                                               [("Recent", timedelta(hours=1)), ("Old", timedelta(hours=5)), ("Older", timedelta(days=2))]})
+            self.assertEqual(t.steam_refresh_order(NOW), ["New", "Older", "Old"])
 
     def test_finished_inventory_with_unavailable_asset_is_explicitly_partial(self):
         page = {"success": 1, "total_inventory_count": 2,
