@@ -1,10 +1,12 @@
 """Tek hesap için CS2 envanter takibi. Python 3.11+; veriler yalnızca JSON."""
 
 import argparse
+import bisect
 import json
 import logging
 import os
 import re
+import statistics
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -32,24 +34,24 @@ HISTORY_DAYS = 30
 PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"  # Eski kayıtlarla karşılaştırma anahtarı; değiştirme.
 CSGOTRADER_URL = "https://prices.csgotrader.app/latest/steam.json"
 STEAM_PRICE_URL = "https://steamcommunity.com/market/priceoverview/"
-# Öncelik (collect_prices): ev bilgisayarının ≤12 saatlik doğrudan Steam fiyatı → CSROI → bu çalıştırmada
-# Steam → ≤7 günlük Steam → Skinport → csgotrader. 2026-10-02 örnek ölçümü (Steam'e göre): CSROI çoğunlukla
-# ±%5 (en kötü %15); Skinport ~%17 düşük; csgotrader %15–50 sapıyor.
+# Öncelik (collect_prices): ≤12 saatlik doğrudan Steam → CSROI → bu çalıştırmada Steam (GitHub'da genelde 429)
+# → ≤7 günlük Steam → Steam'e ayarlı Skinport → csgotrader. 2026-10-02 ölçümü (16 item, Steam en düşük ilana göre):
+# CSROI çoğunlukla ±%5 (en kötü %15); ham Skinport ~%14 düşük, ayarlı Skinport ±%8; csgotrader %15–50 sapıyor.
 PRICE_BASES = {  # anahtar: (etiket, tahmini mi)
     "steam": ("Steam Market (doğrudan)", False),
     "csroi": ("CSROI · Steam son 24 saat", False),
     "steam_last": ("Son bilinen Steam fiyatı", True),
-    "skinport": ("Skinport önerilen fiyatı", True),
+    "skinport": ("Skinport (Steam'e ayarlı)", True),
     "csgotrader": ("csgotrader Steam ortalaması", True),
 }
+# Skinport/Steam oranı fiyat seviyesine göre değişir (ucuzlarda ~0,75, diğerlerinde ~0,84); bant başına medyan.
+SKINPORT_BANDS = (0.15, 0.5, 2, 10, 50)
+SKINPORT_MIN_SAMPLES = 200
+STEAM_MIN_PRICE = Decimal("0.03")  # Steam'de en düşük ilan fiyatı.
 CSGOTRADER_PERIODS = {"last_24h": "24 saat", "last_7d": "7 gün", "last_30d": "30 gün", "last_90d": "90 gün"}
 STEAM_PRICE_FRESH_HOURS = 12
 STEAM_PRICE_MAX_AGE_DAYS = 7
 STEAM_PRICE_BUDGET_SECONDS = 300  # İş akışı adımının 8 dk sınırına sığsın.
-HOME_STEAM_DELAY = 6  # Ev IP'si: dakikada 10 sorgu, 170 item ≈ 17 dk. 3 sn aralık 429 getirdi.
-HOME_REFRESH_MIN_HOURS = 3  # Bundan yeni Steam fiyatı olan item yeniden sorulmaz.
-HOME_JOB_INTERVAL_HOURS = 4  # Ev bilgisayarındaki görev bu aralıkla Steam fiyatı gönderir.
-SCHEDULE_WAIT_FOR_HOME_HOURS = 1.5  # Ev bilgisayarı açıksa saatlik zamanlayıcı en fazla bu kadar daha bekler.
 PRICE_URL = "https://csroi.com/pricing.json"
 WEB_API_INVENTORY_URL = "https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/"
 ROOT = Path(__file__).resolve().parent
@@ -320,24 +322,6 @@ def store_steam_prices(cache, found, now):
                                    if datetime.fromisoformat(cache[name]["checked_at"]) >= cutoff})
 
 
-def home_job_active(now):
-    """Ev bilgisayarı son görev aralığında Steam fiyatı göndermişse açık sayılır."""
-    times = [datetime.fromisoformat(entry["checked_at"]) for entry in read_steam_prices().values()]
-    return bool(times) and now - max(times) < timedelta(hours=HOME_JOB_INTERVAL_HOURS + 0.5)
-
-
-def steam_refresh_order(now):
-    """Ev bilgisayarında sorulacaklar: hiç sorulmamışlar, sonra en eski fiyatlılar.
-
-    Steam sınırı bir turu yarıda keserse sonraki tur kalanlardan devam eder.
-    """
-    oldest = datetime.min.replace(tzinfo=timezone.utc)
-    checked = {name: datetime.fromisoformat(entry["checked_at"]) for name, entry in read_steam_prices().items()}
-    names = [item["market_hash_name"] for item in json.loads(LATEST_PATH.read_text(encoding="utf-8"))["items"]]
-    due = [name for name in names if checked.get(name, oldest) < now - timedelta(hours=HOME_REFRESH_MIN_HOURS)]
-    return sorted(due, key=lambda name: checked.get(name, oldest))
-
-
 def fetch_csgotrader_prices(client, names):
     """Son çare: en yeni dolu dönem (24 saat → 7 → 30 → 90 gün)."""
     data = client.json("GET", CSGOTRADER_URL, service="csgotrader")
@@ -405,22 +389,35 @@ def feed_price(entry, market, field):
     return None
 
 
+def skinport_ratios(data):
+    """Akıştaki her iki fiyatı da olan itemlardan fiyat bandı başına medyan Skinport/Steam oranı."""
+    samples = {}
+    for entry in data.values():
+        steam, skinport = feed_price(entry, "steam", "last_24h"), feed_price(entry, "skinport", "suggested_price")
+        if steam and skinport:
+            samples.setdefault(bisect.bisect(SKINPORT_BANDS, skinport), []).append(skinport / steam)
+    return {band: statistics.median(values) for band, values in samples.items() if len(values) >= SKINPORT_MIN_SAMPLES}
+
+
 def fetch_bulk_market_prices(client, inventory, *, estimates=None):
     """Steam'in tek tek fiyat sorgularındaki IP sınırına takılmamak için toplu veri al.
 
-    estimates verilirse Steam fiyatı olmayan itemlar için Skinport fiyatı oraya yazılır.
+    estimates verilirse Steam fiyatı olmayan itemlar için Steam seviyesine ayarlanmış Skinport fiyatı yazılır.
     """
     data = client.json("GET", PRICE_URL, service="CSROI")
-    prices = {}
+    prices, ratios = {}, None
     for item in inventory:
         name = item["market_hash_name"]
         price = feed_price(data.get(name), "steam", "last_24h")
         if price is not None:
             prices[name] = price
         elif estimates is not None:
-            estimate = feed_price(data.get(name), "skinport", "suggested_price")
-            if estimate:
-                estimates[name] = estimate
+            skinport = feed_price(data.get(name), "skinport", "suggested_price")
+            if skinport:
+                ratios = skinport_ratios(data) if ratios is None else ratios
+                ratio = ratios.get(bisect.bisect(SKINPORT_BANDS, skinport))
+                if ratio:
+                    estimates[name] = max(STEAM_MIN_PRICE, (skinport / ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
     return prices
 
 
@@ -663,8 +660,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check-inventory", action="store_true", help="Yalnızca gerçek envanteri kontrol et; JSON yazma ve mesaj gönderme.")
     parser.add_argument("--check-price", metavar="MARKET_HASH_NAME", help="Tek item için gerçek USD fiyatını ve TCMB dönüşümünü kontrol et.")
-    parser.add_argument("--refresh-steam-prices", action="store_true",
-                        help="Tüm itemların fiyatını bu bilgisayardan doğrudan Steam'e sor (eksik/eski olanlar önce) ve data/steam_prices.json'a yaz.")
     args = parser.parse_args()
     load_dotenv(ROOT / ".env")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -681,29 +676,14 @@ def main():
             LOG.info("Steam en düşük ilan: %s USD · %s · 24 saat medyan: %s · 24 saatte satış: %s · Kur tarihi: %s",
                      quote["usd"], tl(money(quote["usd"] * Decimal(str(fx["usd_try"])))), quote["median"] or "—", quote["volume"] or "—", fx["date"])
             return 0
-        if args.refresh_steam_prices:
-            # GitHub'a Steam fiyat sorguları kapalı; ev bağlantısından alınanlar 12 saat birinci kaynaktır.
-            names = steam_refresh_order(now)
-            LOG.info("%s item Steam'e soruluyor (yaklaşık %s dakika).", len(names), round(len(names) * HOME_STEAM_DELAY / 60))
-            client.steam_delay = HOME_STEAM_DELAY
-            found = fetch_steam_prices(client, names, budget=None)
-            if found:
-                store_steam_prices(read_steam_prices(), found, now)
-            LOG.info("%s/%s item için Steam fiyatı kaydedildi.", len(found), len(names))
-            return 0
         steam_id = os.getenv("STEAM_ID", "").strip()
         if not steam_id:
             raise TrackerError("STEAM_ID eksik. GitHub Secrets veya .env dosyasına SteamID64 girin.")
         if not args.check_inventory and (not token or not chat_id):
             raise TrackerError("TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID zorunlu.")
         history = read_history(now) if not args.check_inventory else []
-        gap = now - datetime.fromisoformat(history[-1]["checked_at"]) if history else None
-        if gap is not None and gap < timedelta(hours=min_gap):
+        if history and now - datetime.fromisoformat(history[-1]["checked_at"]) < timedelta(hours=min_gap):
             LOG.info("Son başarılı kontrolün üzerinden %s saat geçmedi; bu planlı çalıştırma atlandı.", f"{min_gap:g}")
-            return 0
-        if gap is not None and os.getenv("REPORT_TRIGGER") == "schedule" and home_job_active(now)                 and gap < timedelta(hours=min_gap + SCHEDULE_WAIT_FOR_HOME_HOURS):
-            # Ev bilgisayarı açık: rapor onun göndereceği dakikalık Steam fiyatlarıyla hazırlanır.
-            LOG.info("Ev bilgisayarı Steam fiyatı gönderiyor; rapor onun bir sonraki gönderimini bekliyor.")
             return 0
         inventory_source, inventory_checked_at = "steam", None
         try:
@@ -742,7 +722,7 @@ def main():
     except (TrackerError, OSError, ValueError, KeyError, TypeError, ArithmeticError) as error:
         safe_message = str(error) if isinstance(error, TrackerError) else "Veri işlenemedi veya dosyaya yazılamadı; dosya izinlerini ve veri biçimini kontrol edin."
         LOG.error("%s", safe_message)
-        if notify and token and chat_id and not args.check_inventory and not args.check_price and not args.refresh_steam_prices:
+        if notify and token and chat_id and not args.check_inventory and not args.check_price:
             try:
                 send_telegram(client, token, chat_id, "⚠️ CS2 takip kontrolü tamamlanamadı.\n" + safe_message + "\nSon başarılı veri tarihi dashboard'da gösterilir.")
             except TrackerError:

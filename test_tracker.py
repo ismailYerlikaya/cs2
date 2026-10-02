@@ -81,16 +81,20 @@ class TrackerTests(unittest.TestCase):
                          {"Case": Decimal("0.26")})
         client.json.assert_called_once_with("GET", t.PRICE_URL, service="CSROI")
 
-    def test_skinport_estimate_only_when_steam_price_missing(self):
-        client = Mock(json=Mock(return_value={
-            "Case": {"steam": {"last_24h": 0.26}, "skinport": {"suggested_price": 0.2}},
-            "Slab": {"steam": {}, "skinport": {"suggested_price": 0.5}},
-            "Zero": {"skinport": {"suggested_price": 0}},
-        }))
+    def test_skinport_estimate_is_calibrated_to_steam_per_price_band(self):
+        # 0,15–0,5 $ bandında Skinport Steam'in 0,8 katı; 0,15 $ altında 0,5 katı.
+        feed = {f"Mid{i}": {"steam": {"last_24h": 0.25}, "skinport": {"suggested_price": 0.2}} for i in range(t.SKINPORT_MIN_SAMPLES)}
+        feed |= {f"Low{i}": {"steam": {"last_24h": 0.1}, "skinport": {"suggested_price": 0.05}} for i in range(t.SKINPORT_MIN_SAMPLES)}
+        feed |= {"Case": {"steam": {"last_24h": 0.26}, "skinport": {"suggested_price": 0.2}},
+                 "Slab": {"steam": {}, "skinport": {"suggested_price": 0.4}},
+                 "Cheap": {"skinport": {"suggested_price": 0.01}},
+                 "Zero": {"skinport": {"suggested_price": 0}},
+                 "Rare": {"skinport": {"suggested_price": 60}}}  # Bu bantta yeterli örnek yok: tahmin yapılmaz.
         estimates = {}
-        prices = t.fetch_bulk_market_prices(client, [item("Case"), item("Slab"), item("Zero"), item("Gone")], estimates=estimates)
+        prices = t.fetch_bulk_market_prices(Mock(json=Mock(return_value=feed)),
+                                            [item(name) for name in ["Case", "Slab", "Cheap", "Zero", "Rare", "Gone"]], estimates=estimates)
         self.assertEqual(prices, {"Case": Decimal("0.26")})
-        self.assertEqual(estimates, {"Slab": Decimal("0.5")})
+        self.assertEqual(estimates, {"Slab": Decimal("0.50"), "Cheap": Decimal("0.03")})
 
     def test_change_compares_only_items_priced_the_same_way_in_both_runs(self):
         inventory = [item("Case"), item("Slab"), item("Sealed")]
@@ -98,7 +102,7 @@ class TrackerTests(unittest.TestCase):
         after = t.build_snapshot(inventory, {"Case": Decimal("1.1"), "Slab": (Decimal("2"), "skinport", None)}, FX, before, NOW)
         slab = after["items"][1]
         self.assertTrue(slab["price_estimated"])
-        self.assertEqual(slab["price_label"], "Skinport önerilen fiyatı")
+        self.assertEqual(slab["price_label"], "Skinport (Steam'e ayarlı)")
         self.assertEqual(slab["total_value"], 240)
         self.assertEqual(after["total_value"], 372)
         self.assertEqual((after["estimated_items"], after["estimated_value"]), (1, 240))
@@ -106,7 +110,7 @@ class TrackerTests(unittest.TestCase):
         self.assertFalse(after["complete"])
         report = t.make_report(after)
         self.assertIn("kısmı tahmini (1 item", report)
-        self.assertIn("Fiyatlar: CSROI · Steam son 24 saat 1 · Skinport önerilen fiyatı 1", report)
+        self.assertIn("Fiyatlar: CSROI · Steam son 24 saat 1 · Skinport (Steam'e ayarlı) 1", report)
         self.assertIn("2 item iki kontrolde", report)
         # Tahminden gerçek Steam fiyatına geçiş sahte hareket sayılmaz.
         later = t.build_snapshot(inventory, {"Case": Decimal("1.1"), "Slab": (Decimal("3"), "steam", NOW.isoformat())}, FX, after, NOW + timedelta(hours=8))
@@ -179,14 +183,6 @@ class TrackerTests(unittest.TestCase):
                  self.assertLogs(t.LOG, "WARNING"):
                 self.assertEqual(t.collect_prices(Mock(), [item()], NOW), {"Case": (Decimal("1.5"), "csgotrader", "last_24h")})
             self.assertFalse(t.STEAM_PRICES_PATH.exists())
-
-    def test_home_refresh_asks_missing_then_oldest_and_skips_recent(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(t, "STEAM_PRICES_PATH", Path(folder) / "steam_prices.json"), \
-             patch.object(t, "LATEST_PATH", Path(folder) / "latest.json"):
-            t.write_json(t.LATEST_PATH, {"items": [item(name) for name in ["Recent", "Old", "Older", "New"]]})
-            t.write_json(t.STEAM_PRICES_PATH, {name: {"usd": 1, "checked_at": (NOW - age).isoformat()} for name, age in
-                                               [("Recent", timedelta(hours=1)), ("Old", timedelta(hours=5)), ("Older", timedelta(days=2))]})
-            self.assertEqual(t.steam_refresh_order(NOW), ["New", "Older", "Old"])
 
     def test_finished_inventory_with_unavailable_asset_is_explicitly_partial(self):
         page = {"success": 1, "total_inventory_count": 2,
@@ -423,22 +419,6 @@ class TrackerTests(unittest.TestCase):
             self.assertEqual(code, 0)
             inventory.assert_not_called()
             send.assert_not_called()
-
-    def test_schedule_waits_for_home_steam_prices_but_not_forever(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(t, "STEAM_PRICES_PATH", Path(folder) / "steam_prices.json"):
-            now = datetime.now(timezone.utc)
-            t.write_json(t.STEAM_PRICES_PATH, {"Case": {"usd": 1, "checked_at": (now - timedelta(hours=3)).isoformat()}})
-            for hours, trigger, reported in [(8, "schedule", False), (8, "push", True), (9.1, "schedule", True)]:
-                with self.subTest(hours=hours, trigger=trigger):
-                    last = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, now - timedelta(hours=hours))
-                    code, inventory, send, _ = self.run_main(folder, [last], {"MIN_HOURS_BETWEEN_REPORTS": "7.5", "REPORT_TRIGGER": trigger},
-                                                             return_value=[item()])
-                    self.assertEqual(code, 0)
-                    self.assertEqual(send.called, reported)
-            t.write_json(t.STEAM_PRICES_PATH, {"Case": {"usd": 1, "checked_at": (now - timedelta(hours=6)).isoformat()}})
-            last = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, now - timedelta(hours=8))
-            _, _, send, _ = self.run_main(folder, [last], {"MIN_HOURS_BETWEEN_REPORTS": "7.5", "REPORT_TRIGGER": "schedule"}, return_value=[item()])
-            self.assertTrue(send.called)  # Bilgisayar kapalı: beklemeden rapor.
 
     def test_first_inventory_failure_is_quiet_on_schedule_but_reported_manually(self):
         with tempfile.TemporaryDirectory() as folder:

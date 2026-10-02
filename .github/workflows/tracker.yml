@@ -5,10 +5,8 @@ on:
     # Her saat (UTC :07) dener; tracker son başarılı rapordan 7,5 saat geçmediyse hemen çıkar.
     # Böylece rapor ~8 saatte bir gelir ve başarısız bir deneme bir saat sonra tekrarlanır.
     - cron: '7 * * * *'
-  # Ev bilgisayarı doğrudan Steam fiyatlarını gönderince rapor taze fiyatlarla hemen hazırlanır (7,5 saat kuralı geçerli).
-  push:
-    branches: [main]
-    paths: ['data/steam_prices.json']
+    # GitHub yoğunlukta saatlik çalıştırmaları atlayabiliyor (2026-10-02'de 5 saat hiç çalışmadı); ikinci deneme.
+    - cron: '37 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -49,8 +47,6 @@ jobs:
           STEAM_ID: ${{ secrets.STEAM_ID }}
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
           MIN_HOURS_BETWEEN_REPORTS: ${{ github.event_name == 'workflow_dispatch' && '0' || '7.5' }}
-          # Saatlik zamanlayıcı, ev bilgisayarı açıksa taze Steam fiyatlı push'u bekler (en fazla 9 saat).
-          REPORT_TRIGGER: ${{ github.event_name }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python tracker.py
