@@ -49,6 +49,8 @@ jobs:
           STEAM_ID: ${{ secrets.STEAM_ID }}
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
           MIN_HOURS_BETWEEN_REPORTS: ${{ github.event_name == 'workflow_dispatch' && '0' || '7.5' }}
+          # Saatlik zamanlayıcı, ev bilgisayarı açıksa taze Steam fiyatlı push'u bekler (en fazla 9 saat).
+          REPORT_TRIGGER: ${{ github.event_name }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python tracker.py

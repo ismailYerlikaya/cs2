@@ -424,6 +424,22 @@ class TrackerTests(unittest.TestCase):
             inventory.assert_not_called()
             send.assert_not_called()
 
+    def test_schedule_waits_for_home_steam_prices_but_not_forever(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(t, "STEAM_PRICES_PATH", Path(folder) / "steam_prices.json"):
+            now = datetime.now(timezone.utc)
+            t.write_json(t.STEAM_PRICES_PATH, {"Case": {"usd": 1, "checked_at": (now - timedelta(hours=3)).isoformat()}})
+            for hours, trigger, reported in [(8, "schedule", False), (8, "push", True), (9.1, "schedule", True)]:
+                with self.subTest(hours=hours, trigger=trigger):
+                    last = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, now - timedelta(hours=hours))
+                    code, inventory, send, _ = self.run_main(folder, [last], {"MIN_HOURS_BETWEEN_REPORTS": "7.5", "REPORT_TRIGGER": trigger},
+                                                             return_value=[item()])
+                    self.assertEqual(code, 0)
+                    self.assertEqual(send.called, reported)
+            t.write_json(t.STEAM_PRICES_PATH, {"Case": {"usd": 1, "checked_at": (now - timedelta(hours=6)).isoformat()}})
+            last = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, now - timedelta(hours=8))
+            _, _, send, _ = self.run_main(folder, [last], {"MIN_HOURS_BETWEEN_REPORTS": "7.5", "REPORT_TRIGGER": "schedule"}, return_value=[item()])
+            self.assertTrue(send.called)  # Bilgisayar kapalı: beklemeden rapor.
+
     def test_first_inventory_failure_is_quiet_on_schedule_but_reported_manually(self):
         with tempfile.TemporaryDirectory() as folder:
             code, _, send, _ = self.run_main(folder, [], {"MIN_HOURS_BETWEEN_REPORTS": "7.5"}, side_effect=t.SteamRateLimitError("429"))

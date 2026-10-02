@@ -48,6 +48,8 @@ STEAM_PRICE_MAX_AGE_DAYS = 7
 STEAM_PRICE_BUDGET_SECONDS = 300  # İş akışı adımının 8 dk sınırına sığsın.
 HOME_STEAM_DELAY = 6  # Ev IP'si: dakikada 10 sorgu, 170 item ≈ 17 dk. 3 sn aralık 429 getirdi.
 HOME_REFRESH_MIN_HOURS = 3  # Bundan yeni Steam fiyatı olan item yeniden sorulmaz.
+HOME_JOB_INTERVAL_HOURS = 4  # Ev bilgisayarındaki görev bu aralıkla Steam fiyatı gönderir.
+SCHEDULE_WAIT_FOR_HOME_HOURS = 1.5  # Ev bilgisayarı açıksa saatlik zamanlayıcı en fazla bu kadar daha bekler.
 PRICE_URL = "https://csroi.com/pricing.json"
 WEB_API_INVENTORY_URL = "https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/"
 ROOT = Path(__file__).resolve().parent
@@ -316,6 +318,12 @@ def store_steam_prices(cache, found, now):
     cutoff = now - timedelta(days=HISTORY_DAYS)
     write_json(STEAM_PRICES_PATH, {name: cache[name] for name in sorted(cache)
                                    if datetime.fromisoformat(cache[name]["checked_at"]) >= cutoff})
+
+
+def home_job_active(now):
+    """Ev bilgisayarı son görev aralığında Steam fiyatı göndermişse açık sayılır."""
+    times = [datetime.fromisoformat(entry["checked_at"]) for entry in read_steam_prices().values()]
+    return bool(times) and now - max(times) < timedelta(hours=HOME_JOB_INTERVAL_HOURS + 0.5)
 
 
 def steam_refresh_order(now):
@@ -689,8 +697,13 @@ def main():
         if not args.check_inventory and (not token or not chat_id):
             raise TrackerError("TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID zorunlu.")
         history = read_history(now) if not args.check_inventory else []
-        if history and now - datetime.fromisoformat(history[-1]["checked_at"]) < timedelta(hours=min_gap):
+        gap = now - datetime.fromisoformat(history[-1]["checked_at"]) if history else None
+        if gap is not None and gap < timedelta(hours=min_gap):
             LOG.info("Son başarılı kontrolün üzerinden %s saat geçmedi; bu planlı çalıştırma atlandı.", f"{min_gap:g}")
+            return 0
+        if gap is not None and os.getenv("REPORT_TRIGGER") == "schedule" and home_job_active(now)                 and gap < timedelta(hours=min_gap + SCHEDULE_WAIT_FOR_HOME_HOURS):
+            # Ev bilgisayarı açık: rapor onun göndereceği dakikalık Steam fiyatlarıyla hazırlanır.
+            LOG.info("Ev bilgisayarı Steam fiyatı gönderiyor; rapor onun bir sonraki gönderimini bekliyor.")
             return 0
         inventory_source, inventory_checked_at = "steam", None
         try:
