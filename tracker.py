@@ -30,11 +30,23 @@ MAX_RETRY_WAIT = 120  # Daha uzun Retry-After istenirse beklemeden hata verilir.
 RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 HISTORY_DAYS = 30
 PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"
-ESTIMATE_SOURCE = "Skinport önerilen fiyatı"  # Steam fiyatı olmayan itemlar için (ör. Sticker Slab).
+CSGOTRADER_URL = "https://prices.csgotrader.app/latest/steam.json"
+# CSROI'de Steam fiyatı olmayan itemlar (ör. Sticker Slab) için sırayla denenen kaynaklar.
+# Örnek ölçümde CSROI Steam'e %0–10 yakın; csgotrader ise %15–50 sapabildiği için en sonda.
+PRICE_BASES = {  # anahtar: (etiket, tahmini mi)
+    "csroi": ("CSROI · Steam son 24 saat", False),
+    "steam": ("Steam Market (doğrudan)", False),
+    "steam_last": ("Son bilinen Steam fiyatı", True),
+    "skinport": ("Skinport önerilen fiyatı", True),
+    "csgotrader": ("csgotrader Steam ortalaması", True),
+}
+STEAM_PRICE_MAX_AGE_DAYS = 7
+STEAM_PRICE_BUDGET_SECONDS = 300  # İş akışı adımının 8 dk sınırına sığsın.
 PRICE_URL = "https://csroi.com/pricing.json"
 WEB_API_INVENTORY_URL = "https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/"
 ROOT = Path(__file__).resolve().parent
 HISTORY_PATH = ROOT / "data/history.json"
+STEAM_PRICES_PATH = ROOT / "data/steam_prices.json"
 LATEST_PATH = ROOT / "site/data/latest.json"
 TR_TIME = timezone(timedelta(hours=3))
 LOG = logging.getLogger("tracker")
@@ -73,13 +85,14 @@ class HttpClient:
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "PersonalCS2Tracker/1.0"})
         self.last_steam_request = 0.0
+        self.steam_delay = REQUEST_DELAY
 
     def request(self, method, url, *, service, **kwargs):
         max_attempts = STEAM_MAX_ATTEMPTS if service == "Steam" else MAX_ATTEMPTS
         endpoint = safe_endpoint(url)
         for attempt in range(max_attempts):
             if service == "Steam":
-                time.sleep(max(0, REQUEST_DELAY - (time.monotonic() - self.last_steam_request)))
+                time.sleep(max(0, self.steam_delay - (time.monotonic() - self.last_steam_request)))
                 self.last_steam_request = time.monotonic()
             wait = (STEAM_RETRY_BASE_SECONDS if service == "Steam" else 5) * (2 ** attempt)
             try:
@@ -246,6 +259,100 @@ def fetch_market_price(client, market_hash_name):
     return parse_usd_price(result["lowest_price"])
 
 
+def fetch_steam_price(client, market_hash_name):
+    """Steam'in son 24 saat medyan satış fiyatı; satış yoksa en düşük ilan fiyatı."""
+    result = client.json("GET", "https://steamcommunity.com/market/priceoverview/", service="Steam",
+                         params={"appid": 730, "currency": 1, "country": "US", "l": "english",
+                                 "market_hash_name": market_hash_name})
+    for field, kind in (("median_price", "median"), ("lowest_price", "lowest")):
+        if result.get("success") and result.get(field):
+            return parse_usd_price(result[field]), kind
+    raise TrackerError("Steam fiyat göndermedi.")
+
+
+def fetch_steam_prices(client, names, budget=STEAM_PRICE_BUDGET_SECONDS):
+    """Tek tek Steam sorgusu. IP sınırına takılınca durur; o ana kadar alınanlar döner."""
+    found, failures, started = {}, 0, time.monotonic()
+    for index, name in enumerate(names):
+        if budget is not None and time.monotonic() - started > budget:
+            LOG.warning("Steam fiyat sorguları süre sınırına ulaştı (%s/%s item).", index, len(names))
+            break
+        try:
+            found[name] = fetch_steam_price(client, name)
+            failures = 0
+        except SteamRateLimitError as error:
+            LOG.warning("Steam fiyat sorguları %s/%s itemda durdu (%s); kalanlar için yedek kaynak kullanılacak.", index, len(names), error)
+            break
+        except TrackerError as error:
+            LOG.warning("Steam %s için fiyat vermedi (%s).", name, error)
+            failures += 1
+            if failures >= 3:
+                break
+    return found
+
+
+def read_steam_prices():
+    """Doğrudan Steam'den alınmış son fiyatlar: {ad: {usd, kind, checked_at}}."""
+    try:
+        data = json.loads(STEAM_PRICES_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except ValueError:
+        LOG.warning("data/steam_prices.json okunamadı; Steam fiyat önbelleği yok sayıldı.")
+        return {}
+    return {name: entry for name, entry in data.items()
+            if isinstance(entry, dict) and isinstance(entry.get("usd"), (int, float)) and isinstance(entry.get("checked_at"), str)} \
+        if isinstance(data, dict) else {}
+
+
+def store_steam_prices(cache, found, now):
+    stamp = now.isoformat()
+    for name, (usd, kind) in found.items():
+        cache[name] = {"usd": float(usd), "kind": kind, "checked_at": stamp}
+    cutoff = now - timedelta(days=HISTORY_DAYS)
+    write_json(STEAM_PRICES_PATH, {name: cache[name] for name in sorted(cache)
+                                   if datetime.fromisoformat(cache[name]["checked_at"]) >= cutoff})
+
+
+def fetch_csgotrader_prices(client, names):
+    """Son çare: en yeni dolu dönem (24 saat → 7 → 30 → 90 gün)."""
+    data = client.json("GET", CSGOTRADER_URL, service="csgotrader")
+    found = {}
+    for name in names:
+        for field in ("last_24h", "last_7d", "last_30d", "last_90d"):
+            price = feed_price(data, name, field)
+            if price:
+                found[name] = (price, field)
+                break
+    return found
+
+
+def collect_prices(client, inventory, now):
+    """Her item için en doğru kaynaktan fiyat: {ad: (usd, kaynak, tarih/dönem)}."""
+    skinport = {}
+    quotes = {name: (usd, "csroi", None) for name, usd in fetch_bulk_market_prices(client, inventory, estimates=skinport).items()}
+    pending = lambda: [x["market_hash_name"] for x in inventory if x["market_hash_name"] not in quotes]
+    if not pending():
+        return quotes
+    cache = read_steam_prices()
+    LOG.info("%s item CSROI'de yok; Steam'den doğrudan soruluyor.", len(pending()))
+    found = fetch_steam_prices(client, pending())
+    quotes.update({name: (usd, "steam", now.isoformat()) for name, (usd, _) in found.items()})
+    store_steam_prices(cache, found, now)
+    for name in pending():
+        entry = cache.get(name)
+        if entry and now - datetime.fromisoformat(entry["checked_at"]) <= timedelta(days=STEAM_PRICE_MAX_AGE_DAYS):
+            quotes[name] = (Decimal(str(entry["usd"])), "steam_last", entry["checked_at"])
+        elif name in skinport:
+            quotes[name] = (skinport[name], "skinport", None)
+    if pending():
+        try:
+            quotes.update({name: (usd, "csgotrader", field) for name, (usd, field) in fetch_csgotrader_prices(client, pending()).items()})
+        except TrackerError as error:
+            LOG.warning("csgotrader fiyatları alınamadı (%s).", error)
+    return quotes
+
+
 def feed_price(entry, market, field):
     data = entry.get(market) if isinstance(entry, dict) else None
     value = data.get(field) if isinstance(data, dict) else None
@@ -311,27 +418,32 @@ def alarm(change):
     return None
 
 
+def price_basis(item):
+    """Eski kayıtlarda price_basis yok: o zamanlar tek kaynak CSROI idi."""
+    return item.get("price_basis") or ("skinport" if item.get("price_estimated") else "csroi")
+
+
 def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None,
-                   price_source=PRICE_SOURCE, estimates=None):
-    """estimates: Steam fiyatı yokken kullanılan tahmini USD fiyatlar (Skinport)."""
-    estimates = estimates or {}
+                   price_source=PRICE_SOURCE):
+    """prices: {ad: Decimal (CSROI) veya (usd, kaynak, tarih/dönem)}."""
     same_price_source = previous is not None and previous.get("price_source") == price_source
     all_old_items = {item["market_hash_name"]: item for item in (previous or {}).get("items", [])}
     old_items = all_old_items if same_price_source else {}
     items = []
     for entry in inventory:
         name = entry["market_hash_name"]
-        usd = prices.get(name)
-        estimated = usd is None and name in estimates
-        if estimated:
-            usd = estimates[name]
+        quote = prices.get(name)
+        usd, basis, as_of = (quote, "csroi", None) if quote is None or isinstance(quote, Decimal) else quote
+        if usd is None:
+            basis = None
         current = money(usd * Decimal(str(fx["usd_try"]))) if usd is not None else None
-        old_item = old_items.get(name, {})
-        # Steam fiyatı ile tahmin birbirine karşılaştırılmaz; kaynak değişimi sahte hareket üretir.
-        old = old_item.get("current_price") if old_item.get("price_estimated", False) == estimated else None
+        old_item = old_items.get(name)
+        # Farklı kaynakların fiyatları birbirine karşılaştırılmaz; kaynak değişimi sahte hareket üretir.
+        old = old_item.get("current_price") if old_item and price_basis(old_item) == basis else None
         change = percent(current, old) if current is not None else None
         items.append({**entry, "price_usd": float(usd) if usd is not None else None,
-                      "price_estimated": estimated,
+                      "price_basis": basis, "price_label": PRICE_BASES[basis][0] if basis else None,
+                      "price_as_of": as_of, "price_estimated": bool(basis and PRICE_BASES[basis][1]),
                       "previous_price": old, "current_price": current,
                       "change_percent": change, "alarm": alarm(change),
                       "total_value": money(Decimal(str(current)) * entry["quantity"]) if current is not None else None})
@@ -348,7 +460,7 @@ def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None
     for name in new_items.keys() | old_items.keys():
         new, old = new_items.get(name), old_items.get(name)
         if (new is not None and new["total_value"] is None) or (old is not None and old.get("total_value") is None) \
-                or (new is not None and old is not None and new["price_estimated"] != old.get("price_estimated", False)):
+                or (new is not None and old is not None and new["price_basis"] != price_basis(old)):
             excluded += 1
             continue
         new_sum += Decimal(str(new["total_value"])) if new else 0
@@ -366,6 +478,8 @@ def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None
             "complete": complete, "missing_prices": missing, "unavailable_assets": unavailable,
             "estimated_items": sum(item["price_estimated"] for item in items),
             "estimated_value": money(sum((Decimal(str(item["total_value"])) for item in items if item["price_estimated"]), Decimal(0))),
+            "price_bases": {basis: sum(item["price_basis"] == basis for item in items)
+                            for basis in PRICE_BASES if any(item["price_basis"] == basis for item in items)},
             "inventory_counts": inventory_metadata or {}, "unique_items": len(items),
             "quantity": sum(item["quantity"] for item in items),
             "inventory_changed": previous is not None and {x["market_hash_name"]: x["quantity"] for x in items}
@@ -422,8 +536,10 @@ def make_report(snapshot):
     lines = ["📊 CS2 MARKET RAPORU", "", "Fiyat kaynağı: " + snapshot.get("price_source", "Steam Community Market"),
              "💰 " + ("Fiyatı alınabilenlerin değeri" if not snapshot["complete"] else "Envanter Değeri"),
              tl(snapshot["total_value"])]
+    if snapshot.get("price_bases"):
+        lines.append("Fiyatlar: " + " · ".join(f"{PRICE_BASES[basis][0]} {count}" for basis, count in snapshot["price_bases"].items()))
     if snapshot.get("estimated_items"):
-        lines.append(f"≈ {tl(snapshot['estimated_value'])} kısmı tahmini ({snapshot['estimated_items']} item, {ESTIMATE_SOURCE})")
+        lines.append(f"≈ {tl(snapshot['estimated_value'])} kısmı tahmini ({snapshot['estimated_items']} item)")
     if snapshot["change_value"] is not None:
         lines.extend(["", f"⏱ Önceki kontrol → şimdi ({snapshot['interval_hours']:g} saat)",
                       ("+" if snapshot["change_value"] > 0 else "") + tl(snapshot["change_value"]),
@@ -490,6 +606,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check-inventory", action="store_true", help="Yalnızca gerçek envanteri kontrol et; JSON yazma ve mesaj gönderme.")
     parser.add_argument("--check-price", metavar="MARKET_HASH_NAME", help="Tek item için gerçek USD fiyatını ve TCMB dönüşümünü kontrol et.")
+    parser.add_argument("--refresh-steam-prices", action="store_true",
+                        help="CSROI'de olmayan itemların fiyatını bu bilgisayardan Steam'e sor ve data/steam_prices.json'a yaz.")
     args = parser.parse_args()
     load_dotenv(ROOT / ".env")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -504,6 +622,16 @@ def main():
             usd = fetch_market_price(client, args.check_price)
             fx = fetch_exchange_rate(client, now)
             LOG.info("Gerçek Steam ilan fiyatı: %s USD · %s · Kur tarihi: %s", usd, tl(money(usd * Decimal(str(fx["usd_try"])))), fx["date"])
+            return 0
+        if args.refresh_steam_prices:
+            # GitHub'a Steam fiyat sorguları engelli; ev bağlantısından alınanlar 7 gün kullanılır.
+            latest = json.loads(LATEST_PATH.read_text(encoding="utf-8"))
+            names = [item["market_hash_name"] for item in latest["items"] if price_basis(item) != "csroi" or item["price_usd"] is None]
+            LOG.info("%s item Steam'e soruluyor (yaklaşık %s dakika).", len(names), round(len(names) * 5 / 60))
+            client.steam_delay = 5  # Ev IP'si de dakikada ~20 sorguda sınırlanıyor.
+            found = fetch_steam_prices(client, names, budget=None)
+            store_steam_prices(read_steam_prices(), found, now)
+            LOG.info("%s/%s item için Steam fiyatı kaydedildi.", len(found), len(names))
             return 0
         steam_id = os.getenv("STEAM_ID", "").strip()
         if not steam_id:
@@ -532,14 +660,14 @@ def main():
             return 0
         fx = fetch_exchange_rate(client, now)
         LOG.info("Fiyatlar tek toplu istekte %s kaynağından alınıyor.", PRICE_SOURCE)
-        estimates = {}
-        prices = fetch_bulk_market_prices(client, inventory, estimates=estimates)
-        if inventory and not prices and not estimates:
+        now = datetime.now(timezone.utc)
+        prices = collect_prices(client, inventory, now)
+        if inventory and not prices:
             raise TrackerError("Toplu fiyat kaynağında envanter itemları bulunamadı; önceki JSON dosyaları korunuyor.")
         now = datetime.now(timezone.utc)
         history = [row for row in history if datetime.fromisoformat(row["checked_at"]) >= now - timedelta(days=HISTORY_DAYS)]
         previous = history[-1] if history else None
-        snapshot = build_snapshot(inventory, prices, fx, previous, now, inventory_metadata, estimates=estimates)
+        snapshot = build_snapshot(inventory, prices, fx, previous, now, inventory_metadata)
         snapshot.update(inventory_source=inventory_source, inventory_checked_at=inventory_checked_at or snapshot["checked_at"])
         write_json(HISTORY_PATH, [*history, snapshot])
         write_json(LATEST_PATH, snapshot)

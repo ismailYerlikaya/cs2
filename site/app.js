@@ -71,7 +71,7 @@ function renderInventory() {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     if (item.current_price == null) link.append(element("small", "", "Fiyat alınamadı"));
-    else if (item.price_estimated) link.append(element("small", "", "Tahmini · Skinport fiyatı (Steam fiyatı yok)"));
+    else if (item.price_basis && item.price_basis !== "csroi") link.append(element("small", "", (item.price_estimated ? "Tahmini · " : "") + item.price_label));
     name.append(itemImage(item), link);
     nameCell.append(name);
     const changeCell = element("td");
@@ -117,7 +117,7 @@ function render(data) {
   const notices = [];
   const stale = Date.now() - checked.getTime() > 12 * 3600000;
   if (stale) notices.push("Veri 12 saatten eski. Son iş akışının sonucunu GitHub Actions'tan kontrol et.");
-  if (data.estimated_items) notices.push(`${data.estimated_items} itemın Steam fiyatı yok; Skinport fiyatı tahmini olarak kullanıldı (${money(data.estimated_value)}).`);
+  if (data.estimated_items) notices.push(`${data.estimated_items} item için güncel Steam fiyatı alınamadı; yedek kaynaktan tahmini fiyat kullanıldı (${money(data.estimated_value)}).`);
   if (data.missing_prices) notices.push(`${data.missing_prices} itemın fiyatı hiçbir kaynakta yok. Gösterilen toplam kısmi.`);
   if (data.unavailable_assets) notices.push(`Steam ${data.unavailable_assets} itemın ayrıntılarını göstermedi. Toplam yalnızca erişilebilen itemları kapsar.`);
   if (data.inventory_source === "cache") notices.push("Steam bu kontrolde envanteri vermedi; son bilinen envanter ve güncel fiyatlar kullanıldı.");

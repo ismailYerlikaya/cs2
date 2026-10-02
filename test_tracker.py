@@ -20,6 +20,12 @@ def item(name="Case", quantity=3):
 
 
 class TrackerTests(unittest.TestCase):
+    def setUp(self):
+        # Testler gerçek ağa çıkmasın; sahte oturum kullanan testler kendi Mock'unu atar.
+        guard = patch.object(requests.Session, "request", side_effect=AssertionError("testte gerçek ağ isteği"))
+        guard.start()
+        self.addCleanup(guard.stop)
+
     def test_inventory_pages_group_amount_and_deduplicate(self):
         desc = {"classid": "10", "instanceid": "0", "marketable": 1, "market_hash_name": "Case"}
         a = {"assetid": "1", "classid": "10", "amount": "2"}
@@ -45,7 +51,7 @@ class TrackerTests(unittest.TestCase):
             t.fetch_inventory(Mock(json=Mock(return_value={})), "76561197960287930", api_key="test-key")
 
     def test_main_falls_back_to_community_inventory_when_web_api_fails(self):
-        with tempfile.TemporaryDirectory() as folder,              patch.object(t, "HISTORY_PATH", Path(folder) / "history.json"), patch.object(t, "LATEST_PATH", Path(folder) / "latest.json"),              patch.dict(t.os.environ, {"STEAM_ID": "76561197960287930", "STEAM_API_KEY": "test-key", "TELEGRAM_BOT_TOKEN": "test", "TELEGRAM_CHAT_ID": "test"}),              patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"),              patch.object(t, "fetch_inventory", side_effect=[t.TrackerError("Steam: HTTP 403"), [item()]]) as inventory,              patch.object(t, "fetch_exchange_rate", return_value=FX),              patch.object(t, "fetch_bulk_market_prices", return_value={"Case": Decimal("1")}),              patch.object(t, "send_telegram"):
+        with tempfile.TemporaryDirectory() as folder,              patch.object(t, "HISTORY_PATH", Path(folder) / "history.json"), patch.object(t, "LATEST_PATH", Path(folder) / "latest.json"),              patch.dict(t.os.environ, {"STEAM_ID": "76561197960287930", "STEAM_API_KEY": "test-key", "TELEGRAM_BOT_TOKEN": "test", "TELEGRAM_CHAT_ID": "test"}),              patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"),              patch.object(t, "fetch_inventory", side_effect=[t.TrackerError("Steam: HTTP 403"), [item()]]) as inventory,              patch.object(t, "fetch_exchange_rate", return_value=FX),              patch.object(t, "collect_prices", return_value={"Case": Decimal("1")}),              patch.object(t, "send_telegram"):
             self.assertEqual(t.main(), 0)
             self.assertEqual(inventory.call_args_list[0].kwargs["api_key"], "test-key")
             self.assertNotIn("api_key", inventory.call_args_list[1].kwargs)
@@ -89,9 +95,10 @@ class TrackerTests(unittest.TestCase):
     def test_change_compares_only_items_priced_the_same_way_in_both_runs(self):
         inventory = [item("Case"), item("Slab"), item("Sealed")]
         before = t.build_snapshot(inventory, {"Case": Decimal("1")}, FX, None, NOW - timedelta(hours=8))
-        after = t.build_snapshot(inventory, {"Case": Decimal("1.1")}, FX, before, NOW, estimates={"Slab": Decimal("2")})
+        after = t.build_snapshot(inventory, {"Case": Decimal("1.1"), "Slab": (Decimal("2"), "skinport", None)}, FX, before, NOW)
         slab = after["items"][1]
         self.assertTrue(slab["price_estimated"])
+        self.assertEqual(slab["price_label"], "Skinport önerilen fiyatı")
         self.assertEqual(slab["total_value"], 240)
         self.assertEqual(after["total_value"], 372)
         self.assertEqual((after["estimated_items"], after["estimated_value"]), (1, 240))
@@ -99,11 +106,49 @@ class TrackerTests(unittest.TestCase):
         self.assertFalse(after["complete"])
         report = t.make_report(after)
         self.assertIn("kısmı tahmini (1 item", report)
+        self.assertIn("Fiyatlar: CSROI · Steam son 24 saat 1 · Skinport önerilen fiyatı 1", report)
         self.assertIn("2 item iki kontrolde", report)
         # Tahminden gerçek Steam fiyatına geçiş sahte hareket sayılmaz.
-        later = t.build_snapshot(inventory, {"Case": Decimal("1.1"), "Slab": Decimal("3")}, FX, after, NOW + timedelta(hours=8))
+        later = t.build_snapshot(inventory, {"Case": Decimal("1.1"), "Slab": (Decimal("3"), "steam", NOW.isoformat())}, FX, after, NOW + timedelta(hours=8))
+        self.assertFalse(later["items"][1]["price_estimated"])
         self.assertIsNone(later["items"][1]["change_percent"])
         self.assertEqual(later["change_value"], 0)
+
+    def test_steam_price_prefers_median_then_lowest(self):
+        client = Mock(json=Mock(side_effect=[{"success": True, "median_price": "$1.20", "lowest_price": "$1.30"},
+                                             {"success": True, "lowest_price": "$0.96"}, {"success": False}]))
+        self.assertEqual(t.fetch_steam_price(client, "A"), (Decimal("1.20"), "median"))
+        self.assertEqual(t.fetch_steam_price(client, "B"), (Decimal("0.96"), "lowest"))
+        with self.assertRaises(t.TrackerError):
+            t.fetch_steam_price(client, "C")
+
+    def test_steam_prices_stop_at_rate_limit(self):
+        with patch.object(t, "fetch_steam_price", side_effect=[(Decimal("1"), "median"), t.SteamRateLimitError("429"), (Decimal("2"), "median")]) as fetch, \
+             self.assertLogs(t.LOG, "WARNING"):
+            self.assertEqual(t.fetch_steam_prices(Mock(), ["A", "B", "C"]), {"A": (Decimal("1"), "median")})
+        self.assertEqual(fetch.call_count, 2)
+
+    def test_collect_prices_uses_best_source_in_order(self):
+        inventory = [item(name) for name in ["Csroi", "Live", "Cached", "Old", "Skin", "Last"]]
+        def bulk(client, inventory, estimates):
+            estimates.update({"Old": Decimal("0.4"), "Skin": Decimal("0.5")})
+            return {"Csroi": Decimal("1")}
+        cache = {"Cached": {"usd": 0.7, "kind": "lowest", "checked_at": (NOW - timedelta(days=2)).isoformat()},
+                 "Old": {"usd": 0.9, "kind": "lowest", "checked_at": (NOW - timedelta(days=8)).isoformat()}}
+        with tempfile.TemporaryDirectory() as folder, patch.object(t, "STEAM_PRICES_PATH", Path(folder) / "steam_prices.json"):
+            t.write_json(t.STEAM_PRICES_PATH, cache)
+            with patch.object(t, "fetch_bulk_market_prices", side_effect=bulk), \
+                 patch.object(t, "fetch_steam_prices", return_value={"Live": (Decimal("2"), "median")}) as steam, \
+                 patch.object(t, "fetch_csgotrader_prices", return_value={"Last": (Decimal("3"), "last_7d")}) as csgotrader:
+                quotes = t.collect_prices(Mock(), inventory, NOW)
+            self.assertEqual(steam.call_args.args[1], ["Live", "Cached", "Old", "Skin", "Last"])
+            self.assertEqual(csgotrader.call_args.args[1], ["Last"])
+            self.assertEqual({name: quote[:2] for name, quote in quotes.items()}, {
+                "Csroi": (Decimal("1"), "csroi"), "Live": (Decimal("2"), "steam"), "Cached": (Decimal("0.7"), "steam_last"),
+                "Old": (Decimal("0.4"), "skinport"), "Skin": (Decimal("0.5"), "skinport"), "Last": (Decimal("3"), "csgotrader")})
+            saved = json.loads(t.STEAM_PRICES_PATH.read_text(encoding="utf-8"))
+            self.assertEqual(saved["Live"], {"usd": 2.0, "kind": "median", "checked_at": NOW.isoformat()})
+            self.assertIn("Old", saved)
 
     def test_finished_inventory_with_unavailable_asset_is_explicitly_partial(self):
         page = {"success": 1, "total_inventory_count": 2,
@@ -285,7 +330,7 @@ class TrackerTests(unittest.TestCase):
                  patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"), \
                  patch.object(t, "fetch_inventory", return_value=[item(quantity=20), item("Other")]), \
                  patch.object(t, "fetch_exchange_rate", return_value=FX), \
-                 patch.object(t, "fetch_bulk_market_prices", return_value={"Case": Decimal("2")}) as price, \
+                 patch.object(t, "collect_prices", return_value={"Case": Decimal("2")}) as price, \
                  patch.object(t, "send_telegram") as send:
                 self.assertEqual(t.main(), 0)
                 self.assertEqual(price.call_count, 1)
@@ -305,7 +350,7 @@ class TrackerTests(unittest.TestCase):
                  patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"), \
                  patch.object(t, "fetch_inventory", return_value=[item()]), \
                  patch.object(t, "fetch_exchange_rate", return_value=FX), \
-                 patch.object(t, "fetch_bulk_market_prices", return_value={}), \
+                 patch.object(t, "collect_prices", return_value={}), \
                  patch.object(t, "send_telegram") as send:
                 self.assertEqual(t.main(), 1)
                 self.assertEqual(history.read_text(), "[]")
@@ -317,7 +362,7 @@ class TrackerTests(unittest.TestCase):
         paths = Path(folder) / "history.json", Path(folder) / "latest.json"
         t.write_json(paths[0], history)
         environ = {"STEAM_ID": "76561197960287930", "TELEGRAM_BOT_TOKEN": "test", "TELEGRAM_CHAT_ID": "test", **(env or {})}
-        with patch.object(t, "HISTORY_PATH", paths[0]), patch.object(t, "LATEST_PATH", paths[1]),              patch.dict(t.os.environ, environ), patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"),              patch.object(t, "fetch_exchange_rate", return_value=FX),              patch.object(t, "fetch_bulk_market_prices", return_value={"Case": Decimal("1.1")}),              patch.object(t, "fetch_inventory", **patches) as inventory, patch.object(t, "send_telegram") as send:
+        with patch.object(t, "HISTORY_PATH", paths[0]), patch.object(t, "LATEST_PATH", paths[1]),              patch.dict(t.os.environ, environ), patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"),              patch.object(t, "fetch_exchange_rate", return_value=FX),              patch.object(t, "collect_prices", return_value={"Case": Decimal("1.1")}),              patch.object(t, "fetch_inventory", **patches) as inventory, patch.object(t, "send_telegram") as send:
             return t.main(), inventory, send, paths
 
     def test_steam_block_uses_last_known_inventory_with_fresh_prices(self):
