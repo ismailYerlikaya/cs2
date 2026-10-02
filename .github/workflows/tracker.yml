@@ -7,6 +7,10 @@ on:
     - cron: '7 * * * *'
     # GitHub yoğunlukta saatlik çalıştırmaları atlayabiliyor (2026-10-02'de 5 saat hiç çalışmadı); ikinci deneme.
     - cron: '37 * * * *'
+  # Kod değişince GitHub'da hemen test edilir; 7,5 saat dolduysa bekleyen rapor da gönderilir.
+  push:
+    branches: [main]
+    paths: ['tracker.py', 'requirements.txt', '.github/workflows/tracker.yml']
   workflow_dispatch:
 
 permissions:
