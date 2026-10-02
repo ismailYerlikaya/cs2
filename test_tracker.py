@@ -236,7 +236,8 @@ class TrackerTests(unittest.TestCase):
         self.assertIsNone(partial["change_percent"])
         recovered = t.build_snapshot([item()], {"Case": Decimal("1.1")}, FX, partial, NOW + timedelta(hours=8))
         self.assertIsNone(recovered["change_value"])
-        self.assertNotIn("Önceki kontrol", t.make_report(recovered))
+        self.assertNotIn("⏱ Önceki kontrol", t.make_report(recovered))
+        self.assertIn("aynı kaynaktan fiyatlanan item olmadığı", t.make_report(recovered))
         self.assertIsNone(recovered["items"][0]["change_percent"])
 
     def test_quantity_change_is_disclosed(self):
