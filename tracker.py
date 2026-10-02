@@ -30,6 +30,7 @@ MAX_RETRY_WAIT = 120  # Daha uzun Retry-After istenirse beklemeden hata verilir.
 RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 HISTORY_DAYS = 30
 PRICE_SOURCE = "CSROI.com · Steam son 24 saat fiyatı"
+ESTIMATE_SOURCE = "Skinport önerilen fiyatı"  # Steam fiyatı olmayan itemlar için (ör. Sticker Slab).
 PRICE_URL = "https://csroi.com/pricing.json"
 WEB_API_INVENTORY_URL = "https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/"
 ROOT = Path(__file__).resolve().parent
@@ -245,18 +246,32 @@ def fetch_market_price(client, market_hash_name):
     return parse_usd_price(result["lowest_price"])
 
 
-def fetch_bulk_market_prices(client, inventory):
-    """Steam'in tek tek fiyat sorgularındaki IP sınırına takılmamak için toplu veri al."""
+def feed_price(entry, market, field):
+    data = entry.get(market) if isinstance(entry, dict) else None
+    value = data.get(field) if isinstance(data, dict) else None
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        price = Decimal(str(value))
+        if price.is_finite() and price >= 0:
+            return price
+    return None
+
+
+def fetch_bulk_market_prices(client, inventory, *, estimates=None):
+    """Steam'in tek tek fiyat sorgularındaki IP sınırına takılmamak için toplu veri al.
+
+    estimates verilirse Steam fiyatı olmayan itemlar için Skinport fiyatı oraya yazılır.
+    """
     data = client.json("GET", PRICE_URL, service="CSROI")
     prices = {}
     for item in inventory:
         name = item["market_hash_name"]
-        steam_data = data.get(name, {}).get("steam", {})
-        value = steam_data.get("last_24h") if isinstance(steam_data, dict) else None
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
-            price = Decimal(str(value))
-            if price.is_finite() and price >= 0:
-                prices[name] = price
+        price = feed_price(data.get(name), "steam", "last_24h")
+        if price is not None:
+            prices[name] = price
+        elif estimates is not None:
+            estimate = feed_price(data.get(name), "skinport", "suggested_price")
+            if estimate:
+                estimates[name] = estimate
     return prices
 
 
@@ -297,17 +312,26 @@ def alarm(change):
 
 
 def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None,
-                   price_source=PRICE_SOURCE):
+                   price_source=PRICE_SOURCE, estimates=None):
+    """estimates: Steam fiyatı yokken kullanılan tahmini USD fiyatlar (Skinport)."""
+    estimates = estimates or {}
     same_price_source = previous is not None and previous.get("price_source") == price_source
-    old_items = {item["market_hash_name"]: item for item in (previous or {}).get("items", [])}
+    all_old_items = {item["market_hash_name"]: item for item in (previous or {}).get("items", [])}
+    old_items = all_old_items if same_price_source else {}
     items = []
     for entry in inventory:
         name = entry["market_hash_name"]
         usd = prices.get(name)
+        estimated = usd is None and name in estimates
+        if estimated:
+            usd = estimates[name]
         current = money(usd * Decimal(str(fx["usd_try"]))) if usd is not None else None
-        old = old_items.get(name, {}).get("current_price") if (previous or {}).get("price_source") == price_source else None
+        old_item = old_items.get(name, {})
+        # Steam fiyatı ile tahmin birbirine karşılaştırılmaz; kaynak değişimi sahte hareket üretir.
+        old = old_item.get("current_price") if old_item.get("price_estimated", False) == estimated else None
         change = percent(current, old) if current is not None else None
         items.append({**entry, "price_usd": float(usd) if usd is not None else None,
+                      "price_estimated": estimated,
                       "previous_price": old, "current_price": current,
                       "change_percent": change, "alarm": alarm(change),
                       "total_value": money(Decimal(str(current)) * entry["quantity"]) if current is not None else None})
@@ -315,21 +339,37 @@ def build_snapshot(inventory, prices, fx, previous, now, inventory_metadata=None
     total = money(sum((Decimal(str(item["total_value"])) for item in items if item["total_value"] is not None), Decimal(0)))
     unavailable = (inventory_metadata or {}).get("unavailable_assets", 0)
     complete = missing == 0 and unavailable == 0
-    comparable = same_price_source and previous.get("complete") is True and complete
     old_total = previous.get("total_value") if same_price_source else None
-    difference = money(Decimal(str(total)) - Decimal(str(old_total))) if comparable else None
+    # Toplam değişim: iki kontrolde de aynı türden fiyatı olan itemlar (eklenen/çıkan itemlar dahil).
+    # Bir tarafta fiyatı olmayan veya Steam ↔ tahmin arasında geçen itemlar iki toplamdan da çıkarılır.
+    new_items = {item["market_hash_name"]: item for item in items}
+    new_sum = old_sum = Decimal(0)
+    excluded = 0
+    for name in new_items.keys() | old_items.keys():
+        new, old = new_items.get(name), old_items.get(name)
+        if (new is not None and new["total_value"] is None) or (old is not None and old.get("total_value") is None) \
+                or (new is not None and old is not None and new["price_estimated"] != old.get("price_estimated", False)):
+            excluded += 1
+            continue
+        new_sum += Decimal(str(new["total_value"])) if new else 0
+        old_sum += Decimal(str(old["total_value"])) if old else 0
+    comparable = same_price_source and bool(new_sum or old_sum)
+    difference = money(new_sum - old_sum) if comparable else None
     elapsed = (now - datetime.fromisoformat(previous["checked_at"])).total_seconds() / 3600 if previous else None
     return {"schema_version": 1, "status": "ok" if complete else "partial", "currency": "TRY",
             "checked_at": now.isoformat(), "previous_checked_at": previous["checked_at"] if same_price_source else None,
             "price_source": price_source,
             "interval_hours": round(elapsed, 2) if same_price_source and elapsed is not None else None,
             "fx": fx, "total_value": total, "previous_total_value": old_total,
-            "change_value": difference, "change_percent": percent(total, old_total) if comparable else None,
+            "change_value": difference, "change_percent": percent(float(new_sum), float(old_sum)) if comparable else None,
+            "change_excluded_items": excluded if comparable else None,
             "complete": complete, "missing_prices": missing, "unavailable_assets": unavailable,
+            "estimated_items": sum(item["price_estimated"] for item in items),
+            "estimated_value": money(sum((Decimal(str(item["total_value"])) for item in items if item["price_estimated"]), Decimal(0))),
             "inventory_counts": inventory_metadata or {}, "unique_items": len(items),
             "quantity": sum(item["quantity"] for item in items),
             "inventory_changed": previous is not None and {x["market_hash_name"]: x["quantity"] for x in items}
-                                 != {key: value["quantity"] for key, value in old_items.items()},
+                                 != {key: value["quantity"] for key, value in all_old_items.items()},
             "items": items}
 
 
@@ -382,10 +422,14 @@ def make_report(snapshot):
     lines = ["📊 CS2 MARKET RAPORU", "", "Fiyat kaynağı: " + snapshot.get("price_source", "Steam Community Market"),
              "💰 " + ("Fiyatı alınabilenlerin değeri" if not snapshot["complete"] else "Envanter Değeri"),
              tl(snapshot["total_value"])]
+    if snapshot.get("estimated_items"):
+        lines.append(f"≈ {tl(snapshot['estimated_value'])} kısmı tahmini ({snapshot['estimated_items']} item, {ESTIMATE_SOURCE})")
     if snapshot["change_value"] is not None:
         lines.extend(["", f"⏱ Önceki kontrol → şimdi ({snapshot['interval_hours']:g} saat)",
                       ("+" if snapshot["change_value"] > 0 else "") + tl(snapshot["change_value"]),
                       f"{snapshot['change_percent']:+.2f}%" if snapshot["change_percent"] is not None else "Önceki toplam sıfır; yüzde hesaplanamaz."])
+        if snapshot.get("change_excluded_items"):
+            lines.append(f"({snapshot['change_excluded_items']} item iki kontrolde aynı kaynaktan fiyatlanamadığı için hariç)")
     else:
         lines.extend(["", "İlk ölçüm veya eksik veri nedeniyle toplam değişim hesaplanamadı."])
     changed = [x for x in snapshot["items"] if x["change_percent"] is not None]
@@ -395,16 +439,16 @@ def make_report(snapshot):
         if not rows:
             lines.append("Yok.")
         for index, item in enumerate(rows, 1):
-            name = " ".join(item["display_name"].split())[:100]
+            name = " ".join(item["display_name"].split())[:100] + (" (tahmini)" if item.get("price_estimated") else "")
             lines.extend([f"{index}. {name}", f"{tl(item['previous_price'])} → {tl(item['current_price'])}",
                           f"{item['change_percent']:+.2f}% · Adet: {item['quantity']}" + (f" · {item['alarm']}" if item["alarm"] else "")])
     significant = [x for x in changed if x["change_percent"] >= ALARM_UP or x["change_percent"] <= ALARM_DOWN]
     lines.extend(["", f"Önemli hareket: {len(significant)} item (eşikler {ALARM_UP:+}% / {ALARM_DOWN:+}%).",
                   f"📦 {snapshot['unique_items']} farklı item · {snapshot['quantity']} adet."])
     if snapshot["missing_prices"]:
-        lines.append(f"⚠️ {snapshot['missing_prices']} itemın fiyatı alınamadı; toplam eksik, bu itemlar sıfır sayılmadı.")
+        lines.append(f"⚠️ {snapshot['missing_prices']} itemın fiyatı hiçbir kaynakta yok; toplam eksik, bu itemlar sıfır sayılmadı.")
     if snapshot.get("unavailable_assets"):
-        lines.append(f"⚠️ Steam {snapshot['unavailable_assets']} itemın ayrıntılarını göstermedi. Değer yalnızca erişilebilen itemları kapsar; toplam değişim hesaplanmadı.")
+        lines.append(f"⚠️ Steam {snapshot['unavailable_assets']} itemın ayrıntılarını göstermedi. Değer yalnızca erişilebilen itemları kapsar.")
     if snapshot.get("inventory_source") == "cache":
         lines.append("⚠️ Steam bu kontrolde envanteri vermedi; " + datetime.fromisoformat(snapshot["inventory_checked_at"]).astimezone(TR_TIME).strftime("%d.%m.%Y %H:%M")
                      + " tarihli son envanter kullanıldı. Fiyatlar günceldir.")
@@ -488,17 +532,19 @@ def main():
             return 0
         fx = fetch_exchange_rate(client, now)
         LOG.info("Fiyatlar tek toplu istekte %s kaynağından alınıyor.", PRICE_SOURCE)
-        prices = fetch_bulk_market_prices(client, inventory)
-        if inventory and not prices:
+        estimates = {}
+        prices = fetch_bulk_market_prices(client, inventory, estimates=estimates)
+        if inventory and not prices and not estimates:
             raise TrackerError("Toplu fiyat kaynağında envanter itemları bulunamadı; önceki JSON dosyaları korunuyor.")
         now = datetime.now(timezone.utc)
         history = [row for row in history if datetime.fromisoformat(row["checked_at"]) >= now - timedelta(days=HISTORY_DAYS)]
         previous = history[-1] if history else None
-        snapshot = build_snapshot(inventory, prices, fx, previous, now, inventory_metadata)
+        snapshot = build_snapshot(inventory, prices, fx, previous, now, inventory_metadata, estimates=estimates)
         snapshot.update(inventory_source=inventory_source, inventory_checked_at=inventory_checked_at or snapshot["checked_at"])
         write_json(HISTORY_PATH, [*history, snapshot])
         write_json(LATEST_PATH, snapshot)
-        LOG.info("JSON güncellendi. %s; fiyatı alınamayan: %s.", tl(snapshot["total_value"]), snapshot["missing_prices"])
+        LOG.info("JSON güncellendi. %s; tahmini fiyatlı: %s; fiyatı alınamayan: %s.", tl(snapshot["total_value"]),
+                 snapshot["estimated_items"], snapshot["missing_prices"])
         send_telegram(client, token, chat_id, make_report(snapshot))
         LOG.info("Telegram raporu gönderildi.")
         return 0

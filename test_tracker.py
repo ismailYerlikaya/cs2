@@ -75,6 +75,36 @@ class TrackerTests(unittest.TestCase):
                          {"Case": Decimal("0.26")})
         client.json.assert_called_once_with("GET", t.PRICE_URL, service="CSROI")
 
+    def test_skinport_estimate_only_when_steam_price_missing(self):
+        client = Mock(json=Mock(return_value={
+            "Case": {"steam": {"last_24h": 0.26}, "skinport": {"suggested_price": 0.2}},
+            "Slab": {"steam": {}, "skinport": {"suggested_price": 0.5}},
+            "Zero": {"skinport": {"suggested_price": 0}},
+        }))
+        estimates = {}
+        prices = t.fetch_bulk_market_prices(client, [item("Case"), item("Slab"), item("Zero"), item("Gone")], estimates=estimates)
+        self.assertEqual(prices, {"Case": Decimal("0.26")})
+        self.assertEqual(estimates, {"Slab": Decimal("0.5")})
+
+    def test_change_compares_only_items_priced_the_same_way_in_both_runs(self):
+        inventory = [item("Case"), item("Slab"), item("Sealed")]
+        before = t.build_snapshot(inventory, {"Case": Decimal("1")}, FX, None, NOW - timedelta(hours=8))
+        after = t.build_snapshot(inventory, {"Case": Decimal("1.1")}, FX, before, NOW, estimates={"Slab": Decimal("2")})
+        slab = after["items"][1]
+        self.assertTrue(slab["price_estimated"])
+        self.assertEqual(slab["total_value"], 240)
+        self.assertEqual(after["total_value"], 372)
+        self.assertEqual((after["estimated_items"], after["estimated_value"]), (1, 240))
+        self.assertEqual((after["change_value"], after["change_percent"], after["change_excluded_items"]), (12, 10, 2))
+        self.assertFalse(after["complete"])
+        report = t.make_report(after)
+        self.assertIn("kısmı tahmini (1 item", report)
+        self.assertIn("2 item iki kontrolde", report)
+        # Tahminden gerçek Steam fiyatına geçiş sahte hareket sayılmaz.
+        later = t.build_snapshot(inventory, {"Case": Decimal("1.1"), "Slab": Decimal("3")}, FX, after, NOW + timedelta(hours=8))
+        self.assertIsNone(later["items"][1]["change_percent"])
+        self.assertEqual(later["change_value"], 0)
+
     def test_finished_inventory_with_unavailable_asset_is_explicitly_partial(self):
         page = {"success": 1, "total_inventory_count": 2,
                 "assets": [{"assetid": "1", "classid": "10", "amount": "1"}],
@@ -87,11 +117,10 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(after["total_value"], 44)
         self.assertFalse(after["complete"])
         self.assertEqual(after["status"], "partial")
-        self.assertIsNone(after["change_value"])
+        # Görünmeyen item iki tarafta da yok; görünen itemların değişimi yine hesaplanır.
+        self.assertEqual(after["change_value"], 4)
         self.assertEqual(after["items"][0]["change_percent"], 10)
         self.assertIn("Steam 1 itemın ayrıntılarını göstermedi", t.make_report(after))
-        recovered = t.build_snapshot(inventory, {"Case": Decimal("1.1")}, FX, after, NOW + timedelta(hours=8))
-        self.assertIsNone(recovered["change_value"])
 
     def test_totals_fx_and_thresholds(self):
         before = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, NOW - timedelta(hours=8))
@@ -124,6 +153,7 @@ class TrackerTests(unittest.TestCase):
         self.assertIsNone(partial["change_percent"])
         recovered = t.build_snapshot([item()], {"Case": Decimal("1.1")}, FX, partial, NOW + timedelta(hours=8))
         self.assertIsNone(recovered["change_value"])
+        self.assertNotIn("Önceki kontrol", t.make_report(recovered))
         self.assertIsNone(recovered["items"][0]["change_percent"])
 
     def test_quantity_change_is_disclosed(self):
