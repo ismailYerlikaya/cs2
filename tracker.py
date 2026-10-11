@@ -61,6 +61,7 @@ HISTORY_PATH = ROOT / "data/history.json"
 STEAM_PRICES_PATH = ROOT / "data/steam_prices.json"
 LATEST_PATH = ROOT / "site/data/latest.json"
 CHATS_PATH = ROOT / "data/telegram_chats.json"
+MAX_FRIENDS = 1  # Davet linki tek kişilik; ilk katılandan sonra başkası eklenmez.
 TR_TIME = timezone(timedelta(hours=3))
 LOG = logging.getLogger("tracker")
 
@@ -693,7 +694,7 @@ def read_chats():
 
 
 def sync_chats(client, token, own_chat):
-    """Davet linkiyle /start diyenleri rapor alıcılarına ekler. Döner: (ek sohbetler, yeni katılanlar, gönderilecek davet linki)."""
+    """Davet linkiyle /start diyen ilk MAX_FRIENDS kişiyi rapor alıcılarına ekler. Döner: (ek sohbetler, yeni katılanlar, gönderilecek davet linki)."""
     key, code, store = chat_key(token), invite_code(token), read_chats()
     chats = [chat for chat in (open_chat(key, x) for x in store["chats"]) if chat]
     joined = []
@@ -706,7 +707,8 @@ def sync_chats(client, token, own_chat):
     for update in updates:
         message = (update.get("message") if isinstance(update, dict) else None) or {}
         chat = str((message.get("chat") or {}).get("id", ""))
-        if str(message.get("text", "")).strip() == f"/start {code}" and chat and chat != own_chat and chat not in chats:
+        if str(message.get("text", "")).strip() == f"/start {code}" and chat and chat != own_chat and chat not in chats \
+                and len(chats) < MAX_FRIENDS:
             chats.append(chat)
             joined.append(chat)
     if joined:
