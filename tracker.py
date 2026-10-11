@@ -2,6 +2,8 @@
 
 import argparse
 import bisect
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -58,6 +60,7 @@ ROOT = Path(__file__).resolve().parent
 HISTORY_PATH = ROOT / "data/history.json"
 STEAM_PRICES_PATH = ROOT / "data/steam_prices.json"
 LATEST_PATH = ROOT / "site/data/latest.json"
+CHATS_PATH = ROOT / "data/telegram_chats.json"
 TR_TIME = timezone(timedelta(hours=3))
 LOG = logging.getLogger("tracker")
 
@@ -656,6 +659,88 @@ def send_telegram(client, token, chat_id, message):
             raise TrackerError("Telegram mesajı kabul etmedi. Bot tokenı, chat ID ve /start mesajını kontrol edin.")
 
 
+def chat_key(token):
+    return hashlib.sha256(b"cs2-tracker-chats:" + token.encode()).digest()
+
+
+def invite_code(token):
+    return hmac.new(chat_key(token), b"invite", hashlib.sha256).hexdigest()[:16]
+
+
+def seal_chat(key, chat_id):
+    # Depo public; arkadaşların Telegram kimliği açıkta görünmesin. Anahtar bot tokenından türetilir.
+    nonce = os.urandom(12)
+    pad = hmac.new(key, nonce, hashlib.sha256).digest()
+    return (nonce + bytes(a ^ b for a, b in zip(f"chat:{chat_id}".encode(), pad))).hex()
+
+
+def open_chat(key, sealed):
+    try:
+        raw = bytes.fromhex(sealed)
+    except (ValueError, TypeError):
+        return None
+    pad = hmac.new(key, raw[:12], hashlib.sha256).digest()
+    text = bytes(a ^ b for a, b in zip(raw[12:], pad)).decode("ascii", "replace")
+    return text[5:] if re.fullmatch(r"chat:-?\d{1,20}", text) else None
+
+
+def read_chats():
+    try:
+        store = json.loads(CHATS_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError):
+        return {"invite_sent": False, "chats": []}
+    return {"invite_sent": store.get("invite_sent") is True, "chats": [x for x in store.get("chats", []) if isinstance(x, str)]}
+
+
+def sync_chats(client, token, own_chat):
+    """Davet linkiyle /start diyenleri rapor alıcılarına ekler. Döner: (ek sohbetler, yeni katılanlar, gönderilecek davet linki)."""
+    key, code, store = chat_key(token), invite_code(token), read_chats()
+    chats = [chat for chat in (open_chat(key, x) for x in store["chats"]) if chat]
+    joined = []
+    try:
+        updates = client.json("POST", f"https://api.telegram.org/bot{token}/getUpdates", service="Telegram",
+                              json={"allowed_updates": ["message"]}).get("result") or []
+    except TrackerError as error:
+        LOG.warning("Telegram katılım istekleri okunamadı (%s).", error)
+        updates = []
+    for update in updates:
+        message = (update.get("message") if isinstance(update, dict) else None) or {}
+        chat = str((message.get("chat") or {}).get("id", ""))
+        if str(message.get("text", "")).strip() == f"/start {code}" and chat and chat != own_chat and chat not in chats:
+            chats.append(chat)
+            joined.append(chat)
+    if joined:
+        store["chats"].extend(seal_chat(key, chat) for chat in joined)
+        write_json(CHATS_PATH, store)
+        LOG.info("%s yeni sohbet raporlara eklendi.", len(joined))
+    invite = None
+    if not store["invite_sent"]:
+        try:
+            username = client.json("GET", f"https://api.telegram.org/bot{token}/getMe", service="Telegram")["result"]["username"]
+            invite = f"https://t.me/{username}?start={code}"
+        except (TrackerError, KeyError, TypeError):
+            LOG.warning("Bot kullanıcı adı alınamadı; davet linki sonraki rapora kaldı.")
+    return chats, joined, invite
+
+
+def mark_invite_sent():
+    store = read_chats()
+    store["invite_sent"] = True
+    write_json(CHATS_PATH, store)
+
+
+WELCOME = "✅ CS2 raporlarına eklendin. Bundan sonra raporlar yaklaşık 8 saatte bir buraya da gelecek.\n\n"
+
+
+def send_to_chats(client, token, chats, joined, report):
+    # Ek alıcıya gönderilemezse (ör. botu engelledi) ana rapor yine başarılı sayılır.
+    for chat in chats:
+        try:
+            send_telegram(client, token, chat, (WELCOME if chat in joined else "") + report)
+        except TrackerError as error:
+            LOG.warning("Ek sohbete rapor gönderilemedi (%s).", error)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check-inventory", action="store_true", help="Yalnızca gerçek envanteri kontrol et; JSON yazma ve mesaj gönderme.")
@@ -682,7 +767,10 @@ def main():
         if not args.check_inventory and (not token or not chat_id):
             raise TrackerError("TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID zorunlu.")
         history = read_history(now) if not args.check_inventory else []
+        chats, joined, invite = sync_chats(client, token, chat_id) if not args.check_inventory else ([], [], None)
         if history and now - datetime.fromisoformat(history[-1]["checked_at"]) < timedelta(hours=min_gap):
+            # Yeni katılan bir sonraki raporu beklemesin; son raporu hemen alsın.
+            send_to_chats(client, token, joined, joined, make_report(history[-1]))
             LOG.info("Son başarılı kontrolün üzerinden %s saat geçmedi; bu planlı çalıştırma atlandı.", f"{min_gap:g}")
             return 0
         inventory_source, inventory_checked_at = "steam", None
@@ -716,8 +804,13 @@ def main():
         write_json(LATEST_PATH, snapshot)
         LOG.info("JSON güncellendi. %s; tahmini fiyatlı: %s; fiyatı alınamayan: %s.", tl(snapshot["total_value"]),
                  snapshot["estimated_items"], snapshot["missing_prices"])
-        send_telegram(client, token, chat_id, make_report(snapshot))
-        LOG.info("Telegram raporu gönderildi.")
+        report = make_report(snapshot)
+        send_telegram(client, token, chat_id, report + (f"\n\n👥 Bu raporlar arkadaşına da gelsin istersen ona bu linki gönder; "
+                                                        f"tıklayıp Başlat'a basması yeterli:\n{invite}" if invite else ""))
+        if invite:
+            mark_invite_sent()
+        send_to_chats(client, token, chats, joined, report)
+        LOG.info("Telegram raporu gönderildi (%s ek sohbet).", len(chats))
         return 0
     except (TrackerError, OSError, ValueError, KeyError, TypeError, ArithmeticError) as error:
         safe_message = str(error) if isinstance(error, TrackerError) else "Veri işlenemedi veya dosyaya yazılamadı; dosya izinlerini ve veri biçimini kontrol edin."

@@ -25,6 +25,9 @@ class TrackerTests(unittest.TestCase):
         guard = patch.object(requests.Session, "request", side_effect=AssertionError("testte gerçek ağ isteği"))
         guard.start()
         self.addCleanup(guard.stop)
+        chats = patch.object(t, "sync_chats", return_value=([], [], None))
+        chats.start()
+        self.addCleanup(chats.stop)
 
     def test_inventory_pages_group_amount_and_deduplicate(self):
         desc = {"classid": "10", "instanceid": "0", "marketable": 1, "market_hash_name": "Case"}
@@ -428,6 +431,52 @@ class TrackerTests(unittest.TestCase):
             code, _, send, _ = self.run_main(folder, [], {"MIN_HOURS_BETWEEN_REPORTS": "0"}, side_effect=t.SteamRateLimitError("429"))
             self.assertEqual(code, 1)
             send.assert_called_once()
+
+
+class ChatTests(unittest.TestCase):
+    def telegram(self, *texts, chat_ids=(111,)):
+        updates = {"ok": True, "result": [{"update_id": i, "message": {"chat": {"id": chat}, "text": text}}
+                                          for i, (chat, text) in enumerate(zip(chat_ids * len(texts), texts))]}
+        return Mock(json=Mock(side_effect=lambda method, url, **_: updates if url.endswith("getUpdates") else {"ok": True, "result": {"username": "cs2bot"}}))
+
+    def test_invite_link_adds_friend_once_and_stored_id_is_not_plain(self):
+        code = t.invite_code("tok")
+        with tempfile.TemporaryDirectory() as folder, patch.object(t, "CHATS_PATH", Path(folder) / "chats.json"):
+            chats, joined, invite = t.sync_chats(self.telegram("/start", f"/start {code}"), "tok", "999")
+            self.assertEqual((chats, joined), (["111"], ["111"]))
+            self.assertEqual(invite, f"https://t.me/cs2bot?start={code}")
+            self.assertNotIn("111", t.CHATS_PATH.read_text(encoding="utf-8"))
+            t.mark_invite_sent()
+            chats, joined, invite = t.sync_chats(self.telegram(f"/start {code}"), "tok", "999")
+            self.assertEqual((chats, joined, invite), (["111"], [], None))
+            # Kendi sohbetin ve yanlış kodlu istekler eklenmez; başka token eski kayıtları açamaz.
+            self.assertEqual(t.sync_chats(self.telegram(f"/start {code}", chat_ids=(999,)), "tok", "999")[1], [])
+            self.assertEqual(t.sync_chats(self.telegram("/start wrong"), "other", "999")[0], [])
+
+    def test_report_goes_to_friends_and_invite_only_once(self):
+        snapshot = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, datetime.now(timezone.utc) - timedelta(hours=8))
+        with tempfile.TemporaryDirectory() as folder:
+            paths = Path(folder) / "history.json", Path(folder) / "latest.json", Path(folder) / "chats.json"
+            t.write_json(paths[0], [snapshot])
+            env = {"STEAM_ID": "76561197960287930", "TELEGRAM_BOT_TOKEN": "tok", "TELEGRAM_CHAT_ID": "999", "MIN_HOURS_BETWEEN_REPORTS": "7.5"}
+            with patch.object(t, "HISTORY_PATH", paths[0]), patch.object(t, "LATEST_PATH", paths[1]), patch.object(t, "CHATS_PATH", paths[2]), \
+                 patch.dict(t.os.environ, env), patch.object(t.sys, "argv", ["tracker.py"]), patch.object(t, "load_dotenv"), \
+                 patch.object(t, "HttpClient", return_value=self.telegram(f"/start {t.invite_code('tok')}")), \
+                 patch.object(t, "fetch_inventory", return_value=[item()]), patch.object(t, "fetch_exchange_rate", return_value=FX), \
+                 patch.object(t, "collect_prices", return_value={"Case": Decimal("1")}), patch.object(t, "send_telegram") as send:
+                self.assertEqual(t.main(), 0)
+                sent = {c.args[2]: c.args[3] for c in send.call_args_list}
+                self.assertIn("t.me/cs2bot?start=", sent["999"])
+                self.assertTrue(sent["111"].startswith("✅"))
+                self.assertNotIn("t.me/", sent["111"])
+                send.reset_mock()
+                # Hemen ardından planlı çalıştırma atlanır; kayıtlı arkadaşa tekrar hoş geldin gitmez.
+                self.assertEqual(t.main(), 0)
+                send.assert_not_called()
+                t.write_json(paths[0], [{**snapshot, "checked_at": (datetime.now(timezone.utc) - timedelta(hours=8)).isoformat()}])
+                self.assertEqual(t.main(), 0)
+                self.assertEqual(sorted(c.args[2] for c in send.call_args_list), ["111", "999"])
+                self.assertTrue(all("t.me/" not in c.args[3] and not c.args[3].startswith("✅") for c in send.call_args_list))
 
 
 if __name__ == "__main__":
