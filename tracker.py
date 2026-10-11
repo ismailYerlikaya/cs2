@@ -61,7 +61,7 @@ HISTORY_PATH = ROOT / "data/history.json"
 STEAM_PRICES_PATH = ROOT / "data/steam_prices.json"
 LATEST_PATH = ROOT / "site/data/latest.json"
 CHATS_PATH = ROOT / "data/telegram_chats.json"
-MAX_FRIENDS = 1  # Davet linki tek kişilik; ilk katılandan sonra başkası eklenmez.
+MAX_FRIENDS = 2  # Aynı davet linkiyle en fazla bu kadar kişi eklenir; sonrakiler rapor almaz.
 TR_TIME = timezone(timedelta(hours=3))
 LOG = logging.getLogger("tracker")
 

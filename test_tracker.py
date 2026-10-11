@@ -453,11 +453,11 @@ class ChatTests(unittest.TestCase):
             self.assertEqual(t.sync_chats(self.telegram(f"/start {code}", chat_ids=(999,)), "tok", "999")[1], [])
             self.assertEqual(t.sync_chats(self.telegram("/start wrong"), "other", "999")[0], [])
 
-    def test_invite_link_works_for_only_one_person(self):
+    def test_invite_link_works_for_at_most_two_people(self):
         code = t.invite_code("tok")
         with tempfile.TemporaryDirectory() as folder, patch.object(t, "CHATS_PATH", Path(folder) / "chats.json"):
-            self.assertEqual(t.sync_chats(self.telegram(f"/start {code}", f"/start {code}", chat_ids=(111, 222)), "tok", "999")[0], ["111"])
-            self.assertEqual(t.sync_chats(self.telegram(f"/start {code}", chat_ids=(333,)), "tok", "999")[:2], (["111"], []))
+            self.assertEqual(t.sync_chats(self.telegram(*[f"/start {code}"] * 3, chat_ids=(111, 222, 333)), "tok", "999")[0], ["111", "222"])
+            self.assertEqual(t.sync_chats(self.telegram(f"/start {code}", chat_ids=(444,)), "tok", "999")[:2], (["111", "222"], []))
 
     def test_report_goes_to_friends_and_invite_only_once(self):
         snapshot = t.build_snapshot([item()], {"Case": Decimal("1")}, FX, None, datetime.now(timezone.utc) - timedelta(hours=8))
