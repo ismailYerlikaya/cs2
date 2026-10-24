@@ -2,10 +2,10 @@
   "schema_version": 1,
   "status": "partial",
   "currency": "TRY",
-  "checked_at": "2026-10-24T14:47:36.406280+00:00",
-  "previous_checked_at": "2026-10-24T06:22:18.509147+00:00",
+  "checked_at": "2026-10-24T22:26:53.818343+00:00",
+  "previous_checked_at": "2026-10-24T14:47:36.406280+00:00",
   "price_source": "CSROI.com · Steam son 24 saat fiyatı",
-  "interval_hours": 8.42,
+  "interval_hours": 7.65,
   "fx": {
     "source": "TCMB döviz satış",
     "date": "2026-10-23",
