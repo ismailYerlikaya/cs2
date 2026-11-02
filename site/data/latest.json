@@ -2,25 +2,25 @@
   "schema_version": 1,
   "status": "partial",
   "currency": "TRY",
-  "checked_at": "2026-11-02T05:54:13.076612+00:00",
-  "previous_checked_at": "2026-11-01T19:36:16.463413+00:00",
+  "checked_at": "2026-11-02T15:39:53.480932+00:00",
+  "previous_checked_at": "2026-11-02T05:54:13.076612+00:00",
   "price_source": "CSROI.com · Steam son 24 saat fiyatı",
-  "interval_hours": 10.3,
+  "interval_hours": 9.76,
   "fx": {
     "source": "TCMB döviz satış",
-    "date": "2026-10-30",
-    "usd_try": 49.8644
+    "date": "2026-11-02",
+    "usd_try": 49.9726
   },
-  "total_value": 16716.09,
-  "previous_total_value": 16740.93,
-  "change_value": -24.84,
-  "change_percent": -0.15,
+  "total_value": 16752.83,
+  "previous_total_value": 16716.09,
+  "change_value": 36.74,
+  "change_percent": 0.22,
   "change_excluded_items": 0,
   "complete": false,
   "missing_prices": 0,
   "unavailable_assets": 1,
   "estimated_items": 73,
-  "estimated_value": 7729.59,
+  "estimated_value": 7746.53,
   "price_bases": {
     "csroi": 97,
     "skinport": 38,
@@ -46,11 +46,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 247.83,
-      "current_price": 252.81,
-      "change_percent": 2.01,
+      "previous_price": 252.81,
+      "current_price": 253.36,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 252.81
+      "total_value": 253.36
     },
     {
       "market_hash_name": "AK-47 | Midnight Laminate (Field-Tested)",
@@ -62,11 +62,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 153.58,
-      "current_price": 154.58,
-      "change_percent": 0.65,
+      "previous_price": 154.58,
+      "current_price": 154.92,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 154.58
+      "total_value": 154.92
     },
     {
       "market_hash_name": "AK-47 | Olive Polycam (Minimal Wear)",
@@ -78,11 +78,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 6.98,
-      "current_price": 7.48,
-      "change_percent": 7.16,
-      "alarm": "📈 Yükseliş",
-      "total_value": 7.48
+      "previous_price": 7.48,
+      "current_price": 7.5,
+      "change_percent": 0.27,
+      "alarm": null,
+      "total_value": 7.5
     },
     {
       "market_hash_name": "AUG | Luxe Trim (Well-Worn)",
@@ -94,11 +94,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 17.45,
-      "current_price": 13.96,
-      "change_percent": -20.0,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 13.96
+      "previous_price": 13.96,
+      "current_price": 13.99,
+      "change_percent": 0.21,
+      "alarm": null,
+      "total_value": 13.99
     },
     {
       "market_hash_name": "AWP | Duality (Field-Tested)",
@@ -110,11 +110,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 177.52,
-      "current_price": 175.52,
-      "change_percent": -1.13,
+      "previous_price": 175.52,
+      "current_price": 175.9,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 175.52
+      "total_value": 175.9
     },
     {
       "market_hash_name": "AWP | Duality (Well-Worn)",
@@ -126,11 +126,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 174.03,
-      "current_price": 173.53,
-      "change_percent": -0.29,
+      "previous_price": 173.53,
+      "current_price": 173.9,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 520.59
+      "total_value": 521.7
     },
     {
       "market_hash_name": "CZ75-Auto | Copper Fiber (Factory New)",
@@ -143,10 +143,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 11.97,
-      "current_price": 11.97,
-      "change_percent": 0.0,
+      "current_price": 11.99,
+      "change_percent": 0.17,
       "alarm": null,
-      "total_value": 47.88
+      "total_value": 47.96
     },
     {
       "market_hash_name": "CZ75-Auto | Copper Fiber (Minimal Wear)",
@@ -159,10 +159,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 3.99,
-      "current_price": 3.99,
-      "change_percent": 0.0,
+      "current_price": 4.0,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 3.99
+      "total_value": 4.0
     },
     {
       "market_hash_name": "Charm | Baby's AK",
@@ -174,11 +174,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 10.47,
-      "current_price": 11.47,
-      "change_percent": 9.55,
-      "alarm": "📈 Yükseliş",
-      "total_value": 11.47
+      "previous_price": 11.47,
+      "current_price": 11.49,
+      "change_percent": 0.17,
+      "alarm": null,
+      "total_value": 11.49
     },
     {
       "market_hash_name": "Charm | Backsplash",
@@ -190,11 +190,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 4.49,
-      "current_price": 4.99,
-      "change_percent": 11.14,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 34.93
+      "previous_price": 4.99,
+      "current_price": 5.0,
+      "change_percent": 0.2,
+      "alarm": null,
+      "total_value": 35.0
     },
     {
       "market_hash_name": "Charm | Glamour Shot",
@@ -206,11 +206,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 40.39,
-      "current_price": 39.89,
-      "change_percent": -1.24,
+      "previous_price": 39.89,
+      "current_price": 39.98,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 39.89
+      "total_value": 39.98
     },
     {
       "market_hash_name": "Charm | Lil' Ava",
@@ -222,11 +222,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 6.48,
-      "current_price": 6.98,
-      "change_percent": 7.72,
-      "alarm": "📈 Yükseliş",
-      "total_value": 160.54
+      "previous_price": 6.98,
+      "current_price": 7.0,
+      "change_percent": 0.29,
+      "alarm": null,
+      "total_value": 161.0
     },
     {
       "market_hash_name": "Charm | Lil' Cackle",
@@ -238,11 +238,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 12.47,
-      "current_price": 14.46,
-      "change_percent": 15.96,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 28.92
+      "previous_price": 14.46,
+      "current_price": 14.49,
+      "change_percent": 0.21,
+      "alarm": null,
+      "total_value": 28.98
     },
     {
       "market_hash_name": "Charm | Lil' Facelift",
@@ -255,10 +255,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 18.95,
-      "current_price": 18.95,
-      "change_percent": 0.0,
+      "current_price": 18.99,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 246.35
+      "total_value": 246.87
     },
     {
       "market_hash_name": "Charm | Lil' No. 2",
@@ -270,11 +270,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 17.45,
-      "current_price": 18.45,
-      "change_percent": 5.73,
-      "alarm": "📈 Yükseliş",
-      "total_value": 535.05
+      "previous_price": 18.45,
+      "current_price": 18.49,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 536.21
     },
     {
       "market_hash_name": "Charm | Lil' Smokey",
@@ -287,10 +287,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 7.48,
-      "current_price": 7.48,
-      "change_percent": 0.0,
+      "current_price": 7.5,
+      "change_percent": 0.27,
       "alarm": null,
-      "total_value": 201.96
+      "total_value": 202.5
     },
     {
       "market_hash_name": "Charm | Lil' Tusk",
@@ -302,11 +302,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 7.98,
-      "current_price": 7.48,
-      "change_percent": -6.27,
-      "alarm": "📉 Düşüş",
-      "total_value": 14.96
+      "previous_price": 7.48,
+      "current_price": 7.5,
+      "change_percent": 0.27,
+      "alarm": null,
+      "total_value": 15.0
     },
     {
       "market_hash_name": "Charm | POP Art",
@@ -318,11 +318,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 29.42,
-      "current_price": 30.42,
-      "change_percent": 3.4,
+      "previous_price": 30.42,
+      "current_price": 30.48,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 60.84
+      "total_value": 60.96
     },
     {
       "market_hash_name": "Desert Eagle | Heat Treated (Battle-Scarred)",
@@ -334,11 +334,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 57.34,
-      "current_price": 54.35,
-      "change_percent": -5.21,
-      "alarm": "📉 Düşüş",
-      "total_value": 380.45
+      "previous_price": 54.35,
+      "current_price": 54.47,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 381.29
     },
     {
       "market_hash_name": "Desert Eagle | Heat Treated (Field-Tested)",
@@ -350,11 +350,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 65.82,
-      "current_price": 71.8,
-      "change_percent": 9.09,
-      "alarm": "📈 Yükseliş",
-      "total_value": 215.4
+      "previous_price": 71.8,
+      "current_price": 71.96,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 215.88
     },
     {
       "market_hash_name": "Desert Eagle | Heat Treated (Well-Worn)",
@@ -366,11 +366,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 61.33,
-      "current_price": 55.85,
-      "change_percent": -8.94,
-      "alarm": "📉 Düşüş",
-      "total_value": 223.4
+      "previous_price": 55.85,
+      "current_price": 55.97,
+      "change_percent": 0.21,
+      "alarm": null,
+      "total_value": 223.88
     },
     {
       "market_hash_name": "Desert Eagle | Mecha Industries (Battle-Scarred)",
@@ -382,11 +382,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 315.64,
-      "current_price": 278.74,
-      "change_percent": -11.69,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 278.74
+      "previous_price": 278.74,
+      "current_price": 279.35,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 279.35
     },
     {
       "market_hash_name": "Desert Eagle | Mecha Industries (Minimal Wear)",
@@ -398,11 +398,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 466.23,
-      "current_price": 454.76,
-      "change_percent": -2.46,
+      "previous_price": 454.76,
+      "current_price": 455.75,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 454.76
+      "total_value": 455.75
     },
     {
       "market_hash_name": "Desert Eagle | Sputnik (Minimal Wear)",
@@ -414,11 +414,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 134.63,
-      "current_price": 146.1,
-      "change_percent": 8.52,
-      "alarm": "📈 Yükseliş",
-      "total_value": 146.1
+      "previous_price": 146.1,
+      "current_price": 146.42,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 146.42
     },
     {
       "market_hash_name": "Desert Eagle | Tilted (Field-Tested)",
@@ -430,11 +430,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 10.47,
-      "current_price": 9.97,
-      "change_percent": -4.78,
+      "previous_price": 9.97,
+      "current_price": 9.99,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 9.97
+      "total_value": 9.99
     },
     {
       "market_hash_name": "FAMAS | Meow 36 (Minimal Wear)",
@@ -446,11 +446,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 9.97,
-      "current_price": 8.98,
-      "change_percent": -9.93,
-      "alarm": "📉 Düşüş",
-      "total_value": 8.98
+      "previous_price": 8.98,
+      "current_price": 9.0,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 9.0
     },
     {
       "market_hash_name": "Five-SeveN | Hybrid (Battle-Scarred)",
@@ -462,11 +462,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 21.44,
-      "current_price": 20.94,
-      "change_percent": -2.33,
+      "previous_price": 20.94,
+      "current_price": 20.99,
+      "change_percent": 0.24,
       "alarm": null,
-      "total_value": 20.94
+      "total_value": 20.99
     },
     {
       "market_hash_name": "Galil AR | Control (Field-Tested)",
@@ -479,10 +479,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 27.43,
-      "current_price": 27.43,
-      "change_percent": 0.0,
+      "current_price": 27.48,
+      "change_percent": 0.18,
       "alarm": null,
-      "total_value": 27.43
+      "total_value": 27.48
     },
     {
       "market_hash_name": "Galil AR | Destroyer (Field-Tested)",
@@ -494,11 +494,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 5.49,
-      "current_price": 4.99,
-      "change_percent": -9.11,
-      "alarm": "📉 Düşüş",
-      "total_value": 4.99
+      "previous_price": 4.99,
+      "current_price": 5.0,
+      "change_percent": 0.2,
+      "alarm": null,
+      "total_value": 5.0
     },
     {
       "market_hash_name": "Glock-18 | Block-18 (Battle-Scarred)",
@@ -510,11 +510,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 25.93,
-      "current_price": 24.93,
-      "change_percent": -3.86,
+      "previous_price": 24.93,
+      "current_price": 24.99,
+      "change_percent": 0.24,
       "alarm": null,
-      "total_value": 24.93
+      "total_value": 24.99
     },
     {
       "market_hash_name": "Glock-18 | Winterized (Well-Worn)",
@@ -526,11 +526,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 4.99,
-      "current_price": 6.48,
-      "change_percent": 29.86,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 6.48
+      "previous_price": 6.48,
+      "current_price": 6.5,
+      "change_percent": 0.31,
+      "alarm": null,
+      "total_value": 6.5
     },
     {
       "market_hash_name": "Kilowatt Case",
@@ -543,10 +543,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 5.98,
-      "current_price": 5.98,
-      "change_percent": 0.0,
+      "current_price": 6.0,
+      "change_percent": 0.33,
       "alarm": null,
-      "total_value": 23.92
+      "total_value": 24.0
     },
     {
       "market_hash_name": "M4A1-S | Black Lotus (Well-Worn)",
@@ -558,11 +558,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 253.81,
-      "current_price": 265.28,
-      "change_percent": 4.52,
+      "previous_price": 265.28,
+      "current_price": 265.85,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 265.28
+      "total_value": 265.85
     },
     {
       "market_hash_name": "M4A1-S | Mud-Spec (Field-Tested)",
@@ -574,11 +574,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 19.45,
-      "current_price": 19.95,
-      "change_percent": 2.57,
+      "previous_price": 19.95,
+      "current_price": 19.99,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 19.95
+      "total_value": 19.99
     },
     {
       "market_hash_name": "M4A1-S | Stratosphere (Minimal Wear)",
@@ -590,11 +590,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 536.04,
-      "current_price": 553.49,
-      "change_percent": 3.26,
+      "previous_price": 553.49,
+      "current_price": 554.7,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 553.49
+      "total_value": 554.7
     },
     {
       "market_hash_name": "M4A4 | Evil Daimyo (Field-Tested)",
@@ -606,11 +606,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 170.04,
-      "current_price": 157.07,
-      "change_percent": -7.63,
-      "alarm": "📉 Düşüş",
-      "total_value": 157.07
+      "previous_price": 157.07,
+      "current_price": 157.41,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 157.41
     },
     {
       "market_hash_name": "MAC-10 | Pipe Down (Field-Tested)",
@@ -623,10 +623,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 29.92,
-      "current_price": 29.92,
-      "change_percent": 0.0,
+      "current_price": 29.98,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 29.92
+      "total_value": 29.98
     },
     {
       "market_hash_name": "MAC-10 | Silver (Factory New)",
@@ -638,11 +638,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 8.98,
-      "current_price": 8.48,
-      "change_percent": -5.57,
-      "alarm": "📉 Düşüş",
-      "total_value": 8.48
+      "previous_price": 8.48,
+      "current_price": 8.5,
+      "change_percent": 0.24,
+      "alarm": null,
+      "total_value": 8.5
     },
     {
       "market_hash_name": "MAG-7 | Wildwood (Factory New)",
@@ -655,10 +655,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 9.47,
-      "current_price": 9.47,
-      "change_percent": 0.0,
+      "current_price": 9.49,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 47.35
+      "total_value": 47.45
     },
     {
       "market_hash_name": "MP5-SD | Liquidation (Field-Tested)",
@@ -671,10 +671,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 4.99,
-      "current_price": 4.99,
-      "change_percent": 0.0,
+      "current_price": 5.0,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 4.99
+      "total_value": 5.0
     },
     {
       "market_hash_name": "MP7 | Coral Paisley (Minimal Wear)",
@@ -687,10 +687,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 4.49,
-      "current_price": 4.49,
-      "change_percent": 0.0,
+      "current_price": 4.5,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 4.49
+      "total_value": 4.5
     },
     {
       "market_hash_name": "MP9 | Buff Blue (Minimal Wear)",
@@ -703,10 +703,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 1.99,
-      "current_price": 1.99,
-      "change_percent": 0.0,
+      "current_price": 2.0,
+      "change_percent": 0.5,
       "alarm": null,
-      "total_value": 1.99
+      "total_value": 2.0
     },
     {
       "market_hash_name": "Music Kit | Tim Huling, Neo Noir",
@@ -718,11 +718,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 39.89,
-      "current_price": 41.39,
-      "change_percent": 3.76,
+      "previous_price": 41.39,
+      "current_price": 41.48,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 41.39
+      "total_value": 41.48
     },
     {
       "market_hash_name": "Nova | Rain Station (Minimal Wear)",
@@ -735,10 +735,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 2.99,
-      "current_price": 2.99,
-      "change_percent": 0.0,
+      "current_price": 3.0,
+      "change_percent": 0.33,
       "alarm": null,
-      "total_value": 2.99
+      "total_value": 3.0
     },
     {
       "market_hash_name": "P2000 | Gnarled (Well-Worn)",
@@ -750,11 +750,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 4.49,
-      "current_price": 4.99,
-      "change_percent": 11.14,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 4.99
+      "previous_price": 4.99,
+      "current_price": 5.0,
+      "change_percent": 0.2,
+      "alarm": null,
+      "total_value": 5.0
     },
     {
       "market_hash_name": "P2000 | Red Wing (Minimal Wear)",
@@ -766,11 +766,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 10.47,
-      "current_price": 11.97,
-      "change_percent": 14.33,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 11.97
+      "previous_price": 11.97,
+      "current_price": 11.99,
+      "change_percent": 0.17,
+      "alarm": null,
+      "total_value": 11.99
     },
     {
       "market_hash_name": "P250 | Constructivist (Factory New)",
@@ -783,10 +783,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 7.98,
-      "current_price": 7.98,
-      "change_percent": 0.0,
+      "current_price": 8.0,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 55.86
+      "total_value": 56.0
     },
     {
       "market_hash_name": "P250 | Red Tide (Minimal Wear)",
@@ -799,10 +799,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 24.93,
-      "current_price": 24.93,
-      "change_percent": 0.0,
+      "current_price": 24.99,
+      "change_percent": 0.24,
       "alarm": null,
-      "total_value": 49.86
+      "total_value": 49.98
     },
     {
       "market_hash_name": "P90 | Straight Dimes (Well-Worn)",
@@ -815,10 +815,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 2.49,
-      "current_price": 2.49,
-      "change_percent": 0.0,
+      "current_price": 2.5,
+      "change_percent": 0.4,
       "alarm": null,
-      "total_value": 2.49
+      "total_value": 2.5
     },
     {
       "market_hash_name": "PP-Bizon | Brass (Field-Tested)",
@@ -831,10 +831,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 7.48,
-      "current_price": 7.48,
-      "change_percent": 0.0,
+      "current_price": 7.5,
+      "change_percent": 0.27,
       "alarm": null,
-      "total_value": 7.48
+      "total_value": 7.5
     },
     {
       "market_hash_name": "Recoil Case",
@@ -846,11 +846,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 12.96,
-      "current_price": 13.46,
-      "change_percent": 3.86,
+      "previous_price": 13.46,
+      "current_price": 13.49,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 121.14
+      "total_value": 121.41
     },
     {
       "market_hash_name": "Revolution Case",
@@ -863,10 +863,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 9.97,
-      "current_price": 9.97,
-      "change_percent": 0.0,
+      "current_price": 9.99,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 179.46
+      "total_value": 179.82
     },
     {
       "market_hash_name": "SG 553 | Basket Halftone (Minimal Wear)",
@@ -879,10 +879,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 2.49,
-      "current_price": 2.49,
-      "change_percent": 0.0,
+      "current_price": 2.5,
+      "change_percent": 0.4,
       "alarm": null,
-      "total_value": 2.49
+      "total_value": 2.5
     },
     {
       "market_hash_name": "SG 553 | Dragon Tech (Minimal Wear)",
@@ -894,11 +894,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 48.87,
-      "current_price": 50.36,
-      "change_percent": 3.05,
+      "previous_price": 50.36,
+      "current_price": 50.47,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 50.36
+      "total_value": 50.47
     },
     {
       "market_hash_name": "SSG 08 | Abyss (Minimal Wear)",
@@ -910,11 +910,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 63.83,
-      "current_price": 61.83,
-      "change_percent": -3.13,
+      "previous_price": 61.83,
+      "current_price": 61.97,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 61.83
+      "total_value": 61.97
     },
     {
       "market_hash_name": "SSG 08 | Tiger Tear (Field-Tested)",
@@ -927,10 +927,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 1.99,
-      "current_price": 1.99,
-      "change_percent": 0.0,
+      "current_price": 2.0,
+      "change_percent": 0.5,
       "alarm": null,
-      "total_value": 1.99
+      "total_value": 2.0
     },
     {
       "market_hash_name": "Sealed Graffiti | Heart (War Pig Pink)",
@@ -943,10 +943,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 5.49,
-      "current_price": 5.49,
-      "change_percent": 0.0,
+      "current_price": 5.5,
+      "change_percent": 0.18,
       "alarm": null,
-      "total_value": 5.49
+      "total_value": 5.5
     },
     {
       "market_hash_name": "Sealed Graffiti | King Me (Brick Red)",
@@ -959,10 +959,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 1.99,
-      "current_price": 1.99,
-      "change_percent": 0.0,
+      "current_price": 2.0,
+      "change_percent": 0.5,
       "alarm": null,
-      "total_value": 1.99
+      "total_value": 2.0
     },
     {
       "market_hash_name": "Sealed Graffiti | Piggles (Princess Pink)",
@@ -975,10 +975,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 3.99,
-      "current_price": 3.99,
-      "change_percent": 0.0,
+      "current_price": 4.0,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 3.99
+      "total_value": 4.0
     },
     {
       "market_hash_name": "Sealed Graffiti | Rage Mode (Tiger Orange)",
@@ -991,10 +991,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 1.99,
-      "current_price": 1.99,
-      "change_percent": 0.0,
+      "current_price": 2.0,
+      "change_percent": 0.5,
       "alarm": null,
-      "total_value": 1.99
+      "total_value": 2.0
     },
     {
       "market_hash_name": "StatTrak™ Dual Berettas | Royal Consorts (Battle-Scarred)",
@@ -1007,10 +1007,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 111.7,
-      "current_price": 111.7,
-      "change_percent": 0.0,
+      "current_price": 111.94,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 111.7
+      "total_value": 111.94
     },
     {
       "market_hash_name": "StatTrak™ M4A4 | Choppa (Well-Worn)",
@@ -1022,11 +1022,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 6.98,
-      "current_price": 6.48,
-      "change_percent": -7.16,
-      "alarm": "📉 Düşüş",
-      "total_value": 6.48
+      "previous_price": 6.48,
+      "current_price": 6.5,
+      "change_percent": 0.31,
+      "alarm": null,
+      "total_value": 6.5
     },
     {
       "market_hash_name": "StatTrak™ MP9 | Nexus (Well-Worn)",
@@ -1038,11 +1038,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 5.49,
-      "current_price": 4.99,
-      "change_percent": -9.11,
-      "alarm": "📉 Düşüş",
-      "total_value": 4.99
+      "previous_price": 4.99,
+      "current_price": 5.0,
+      "change_percent": 0.2,
+      "alarm": null,
+      "total_value": 5.0
     },
     {
       "market_hash_name": "StatTrak™ P250 | Re.built (Field-Tested)",
@@ -1054,11 +1054,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 4.99,
-      "current_price": 4.49,
-      "change_percent": -10.02,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 4.49
+      "previous_price": 4.49,
+      "current_price": 4.5,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 4.5
     },
     {
       "market_hash_name": "StatTrak™ P90 | Vent Rush (Field-Tested)",
@@ -1070,11 +1070,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 36.9,
-      "current_price": 30.92,
-      "change_percent": -16.21,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 30.92
+      "previous_price": 30.92,
+      "current_price": 30.98,
+      "change_percent": 0.19,
+      "alarm": null,
+      "total_value": 30.98
     },
     {
       "market_hash_name": "StatTrak™ USP-S | PC-GRN (Minimal Wear)",
@@ -1086,11 +1086,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 42.88,
-      "current_price": 39.89,
-      "change_percent": -6.97,
-      "alarm": "📉 Düşüş",
-      "total_value": 39.89
+      "previous_price": 39.89,
+      "current_price": 39.98,
+      "change_percent": 0.23,
+      "alarm": null,
+      "total_value": 39.98
     },
     {
       "market_hash_name": "Sticker Slab | 9z Team (Glitter) | Rio 2022",
@@ -1103,10 +1103,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 45.88,
-      "current_price": 45.88,
-      "change_percent": 0.0,
+      "current_price": 45.97,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 45.88
+      "total_value": 45.97
     },
     {
       "market_hash_name": "Sticker Slab | 9z Team | Rio 2022",
@@ -1119,10 +1119,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 39.89,
-      "current_price": 39.89,
-      "change_percent": 0.0,
+      "current_price": 39.98,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 159.56
+      "total_value": 159.92
     },
     {
       "market_hash_name": "Sticker Slab | Apeks (Glitter) | Paris 2023",
@@ -1135,10 +1135,10 @@
       "price_as_of": "last_30d",
       "price_estimated": true,
       "previous_price": 24.93,
-      "current_price": 24.93,
-      "change_percent": 0.0,
+      "current_price": 24.99,
+      "change_percent": 0.24,
       "alarm": null,
-      "total_value": 99.72
+      "total_value": 99.96
     },
     {
       "market_hash_name": "Sticker Slab | BLAST.tv (Holo) | Paris 2023",
@@ -1151,10 +1151,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 23.93,
-      "current_price": 23.93,
-      "change_percent": 0.0,
+      "current_price": 23.99,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 143.58
+      "total_value": 143.94
     },
     {
       "market_hash_name": "Sticker Slab | Bolt Charge",
@@ -1167,10 +1167,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 30.92,
-      "current_price": 30.92,
-      "change_percent": 0.0,
+      "current_price": 30.98,
+      "change_percent": 0.19,
       "alarm": null,
-      "total_value": 61.84
+      "total_value": 61.96
     },
     {
       "market_hash_name": "Sticker Slab | Bolt Energy",
@@ -1183,10 +1183,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 24.43,
-      "current_price": 24.43,
-      "change_percent": 0.0,
+      "current_price": 24.49,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 73.29
+      "total_value": 73.47
     },
     {
       "market_hash_name": "Sticker Slab | Bolt Energy (Foil)",
@@ -1199,10 +1199,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 54.85,
-      "current_price": 54.85,
-      "change_percent": 0.0,
+      "current_price": 54.97,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 274.25
+      "total_value": 274.85
     },
     {
       "market_hash_name": "Sticker Slab | Bolt Strike",
@@ -1215,10 +1215,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 30.92,
-      "current_price": 30.92,
-      "change_percent": 0.0,
+      "current_price": 30.98,
+      "change_percent": 0.19,
       "alarm": null,
-      "total_value": 123.68
+      "total_value": 123.92
     },
     {
       "market_hash_name": "Sticker Slab | Bolt Strike (Foil)",
@@ -1231,10 +1231,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 94.74,
-      "current_price": 94.74,
-      "change_percent": 0.0,
+      "current_price": 94.95,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 473.7
+      "total_value": 474.75
     },
     {
       "market_hash_name": "Sticker Slab | Boom Blast",
@@ -1247,10 +1247,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 23.44,
-      "current_price": 23.44,
-      "change_percent": 0.0,
+      "current_price": 23.49,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 140.64
+      "total_value": 140.94
     },
     {
       "market_hash_name": "Sticker Slab | Boom Blast (Glitter)",
@@ -1263,10 +1263,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 26.43,
-      "current_price": 26.43,
-      "change_percent": 0.0,
+      "current_price": 26.49,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 79.29
+      "total_value": 79.47
     },
     {
       "market_hash_name": "Sticker Slab | Boom Detonation",
@@ -1279,10 +1279,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 24.43,
-      "current_price": 24.43,
-      "change_percent": 0.0,
+      "current_price": 24.49,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 97.72
+      "total_value": 97.96
     },
     {
       "market_hash_name": "Sticker Slab | Boom Detonation (Glitter)",
@@ -1295,10 +1295,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 21.44,
-      "current_price": 21.44,
-      "change_percent": 0.0,
+      "current_price": 21.49,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 42.88
+      "total_value": 42.98
     },
     {
       "market_hash_name": "Sticker Slab | Boom Epicenter",
@@ -1311,10 +1311,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 23.93,
-      "current_price": 23.93,
-      "change_percent": 0.0,
+      "current_price": 23.99,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 119.65
+      "total_value": 119.95
     },
     {
       "market_hash_name": "Sticker Slab | Boom Epicenter (Glitter)",
@@ -1327,10 +1327,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 23.44,
-      "current_price": 23.44,
-      "change_percent": 0.0,
+      "current_price": 23.49,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 117.2
+      "total_value": 117.45
     },
     {
       "market_hash_name": "Sticker Slab | Boom Trail",
@@ -1343,10 +1343,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 23.44,
-      "current_price": 23.44,
-      "change_percent": 0.0,
+      "current_price": 23.49,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 93.76
+      "total_value": 93.96
     },
     {
       "market_hash_name": "Sticker Slab | Boom Trail (Glitter)",
@@ -1359,10 +1359,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 26.93,
-      "current_price": 26.93,
-      "change_percent": 0.0,
+      "current_price": 26.99,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 26.93
+      "total_value": 26.99
     },
     {
       "market_hash_name": "Sticker Slab | Clavis",
@@ -1375,10 +1375,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 21.94,
-      "current_price": 21.94,
-      "change_percent": 0.0,
+      "current_price": 21.99,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 43.88
+      "total_value": 43.98
     },
     {
       "market_hash_name": "Sticker Slab | Clavis (Holo)",
@@ -1391,10 +1391,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 46.87,
-      "current_price": 46.87,
-      "change_percent": 0.0,
+      "current_price": 46.97,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 46.87
+      "total_value": 46.97
     },
     {
       "market_hash_name": "Sticker Slab | FaZe Clan (Glitter) | Paris 2023",
@@ -1407,10 +1407,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 25.93,
-      "current_price": 25.93,
-      "change_percent": 0.0,
+      "current_price": 25.99,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 129.65
+      "total_value": 129.95
     },
     {
       "market_hash_name": "Sticker Slab | Fluxo (Holo) | Paris 2023",
@@ -1423,10 +1423,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 105.21,
-      "current_price": 105.21,
-      "change_percent": 0.0,
+      "current_price": 105.44,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 210.42
+      "total_value": 210.88
     },
     {
       "market_hash_name": "Sticker Slab | High Heat",
@@ -1439,10 +1439,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 34.91,
-      "current_price": 34.91,
-      "change_percent": 0.0,
+      "current_price": 34.98,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 279.28
+      "total_value": 279.84
     },
     {
       "market_hash_name": "Sticker Slab | Hot Rod Heat",
@@ -1455,10 +1455,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 24.43,
-      "current_price": 24.43,
-      "change_percent": 0.0,
+      "current_price": 24.49,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 97.72
+      "total_value": 97.96
     },
     {
       "market_hash_name": "Sticker Slab | Hydro Geyser",
@@ -1471,10 +1471,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 23.44,
-      "current_price": 23.44,
-      "change_percent": 0.0,
+      "current_price": 23.49,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 117.2
+      "total_value": 117.45
     },
     {
       "market_hash_name": "Sticker Slab | Hydro Stream",
@@ -1487,10 +1487,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 15.96,
-      "current_price": 15.96,
-      "change_percent": 0.0,
+      "current_price": 15.99,
+      "change_percent": 0.19,
       "alarm": null,
-      "total_value": 79.8
+      "total_value": 79.95
     },
     {
       "market_hash_name": "Sticker Slab | Hydro Wave",
@@ -1503,10 +1503,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 26.93,
-      "current_price": 26.93,
-      "change_percent": 0.0,
+      "current_price": 26.99,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 107.72
+      "total_value": 107.96
     },
     {
       "market_hash_name": "Sticker Slab | Lorena",
@@ -1519,10 +1519,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 21.94,
-      "current_price": 21.94,
-      "change_percent": 0.0,
+      "current_price": 21.99,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 87.76
+      "total_value": 87.96
     },
     {
       "market_hash_name": "Sticker Slab | MIBR (Gold) | Budapest 2025",
@@ -1535,10 +1535,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 82.28,
-      "current_price": 82.28,
-      "change_percent": 0.0,
+      "current_price": 82.45,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 82.28
+      "total_value": 82.45
     },
     {
       "market_hash_name": "Sticker Slab | Natus Vincere (Foil) | Austin 2025",
@@ -1551,10 +1551,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 18.95,
-      "current_price": 18.95,
-      "change_percent": 0.0,
+      "current_price": 18.99,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 37.9
+      "total_value": 37.98
     },
     {
       "market_hash_name": "Sticker Slab | Natus Vincere (Holo) | 2020 RMR",
@@ -1567,10 +1567,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 38.4,
-      "current_price": 38.4,
-      "change_percent": 0.0,
+      "current_price": 38.48,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 115.2
+      "total_value": 115.44
     },
     {
       "market_hash_name": "Sticker Slab | Scorch Loop",
@@ -1583,10 +1583,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 26.43,
-      "current_price": 26.43,
-      "change_percent": 0.0,
+      "current_price": 26.49,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 79.29
+      "total_value": 79.47
     },
     {
       "market_hash_name": "Sticker Slab | Scorch Loop (Reverse)",
@@ -1599,10 +1599,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 26.43,
-      "current_price": 26.43,
-      "change_percent": 0.0,
+      "current_price": 26.49,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 79.29
+      "total_value": 79.47
     },
     {
       "market_hash_name": "Sticker Slab | Spirit (Foil) | 2020 RMR",
@@ -1615,10 +1615,10 @@
       "price_as_of": "last_30d",
       "price_estimated": true,
       "previous_price": 104.22,
-      "current_price": 104.22,
-      "change_percent": 0.0,
+      "current_price": 104.44,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 208.44
+      "total_value": 208.88
     },
     {
       "market_hash_name": "Sticker Slab | Spirit (Holo) | 2020 RMR",
@@ -1631,10 +1631,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 64.82,
-      "current_price": 64.82,
-      "change_percent": 0.0,
+      "current_price": 64.96,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 324.1
+      "total_value": 324.8
     },
     {
       "market_hash_name": "Sticker Slab | Spirit | 2020 RMR",
@@ -1647,10 +1647,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 32.41,
-      "current_price": 32.41,
-      "change_percent": 0.0,
+      "current_price": 32.48,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 32.41
+      "total_value": 32.48
     },
     {
       "market_hash_name": "Sticker Slab | Team Spirit | Copenhagen 2024",
@@ -1663,10 +1663,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 37.4,
-      "current_price": 37.4,
-      "change_percent": 0.0,
+      "current_price": 37.48,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 112.2
+      "total_value": 112.44
     },
     {
       "market_hash_name": "Sticker Slab | Vitality (Glitter) | Antwerp 2022",
@@ -1679,10 +1679,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 8.98,
-      "current_price": 8.98,
-      "change_percent": 0.0,
+      "current_price": 9.0,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 17.96
+      "total_value": 18.0
     },
     {
       "market_hash_name": "Sticker Slab | Vitality (Glitter) | Rio 2022",
@@ -1695,10 +1695,10 @@
       "price_as_of": "last_30d",
       "price_estimated": true,
       "previous_price": 38.4,
-      "current_price": 38.4,
-      "change_percent": 0.0,
+      "current_price": 38.48,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 38.4
+      "total_value": 38.48
     },
     {
       "market_hash_name": "Sticker Slab | Vitality (Gold) | 2020 RMR",
@@ -1711,10 +1711,10 @@
       "price_as_of": "last_30d",
       "price_estimated": true,
       "previous_price": 135.13,
-      "current_price": 135.13,
-      "change_percent": 0.0,
+      "current_price": 135.43,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 135.13
+      "total_value": 135.43
     },
     {
       "market_hash_name": "Sticker Slab | Vitality (Gold) | Austin 2025",
@@ -1727,10 +1727,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 149.59,
-      "current_price": 149.59,
-      "change_percent": 0.0,
+      "current_price": 149.92,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 149.59
+      "total_value": 149.92
     },
     {
       "market_hash_name": "Sticker Slab | Vitality (Gold) | Paris 2023",
@@ -1743,10 +1743,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 113.19,
-      "current_price": 113.19,
-      "change_percent": 0.0,
+      "current_price": 113.44,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 226.38
+      "total_value": 226.88
     },
     {
       "market_hash_name": "Sticker Slab | Vitality (Holo) | 2020 RMR",
@@ -1759,10 +1759,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 22.94,
-      "current_price": 22.94,
-      "change_percent": 0.0,
+      "current_price": 22.99,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 45.88
+      "total_value": 45.98
     },
     {
       "market_hash_name": "Sticker Slab | Vitality (Holo) | Budapest 2025",
@@ -1775,10 +1775,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 113.69,
-      "current_price": 113.69,
-      "change_percent": 0.0,
+      "current_price": 113.94,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 113.69
+      "total_value": 113.94
     },
     {
       "market_hash_name": "Sticker Slab | Vitality | 2020 RMR",
@@ -1791,10 +1791,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 26.43,
-      "current_price": 26.43,
-      "change_percent": 0.0,
+      "current_price": 26.49,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 52.86
+      "total_value": 52.98
     },
     {
       "market_hash_name": "Sticker Slab | Vitality | Antwerp 2022",
@@ -1807,10 +1807,10 @@
       "price_as_of": "last_90d",
       "price_estimated": true,
       "previous_price": 43.88,
-      "current_price": 43.88,
-      "change_percent": 0.0,
+      "current_price": 43.98,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 87.76
+      "total_value": 87.96
     },
     {
       "market_hash_name": "Sticker Slab | Vitality | Austin 2025",
@@ -1823,10 +1823,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 29.92,
-      "current_price": 29.92,
-      "change_percent": 0.0,
+      "current_price": 29.98,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 59.84
+      "total_value": 59.96
     },
     {
       "market_hash_name": "Sticker Slab | Winding Scorch",
@@ -1839,10 +1839,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 23.44,
-      "current_price": 23.44,
-      "change_percent": 0.0,
+      "current_price": 23.49,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 93.76
+      "total_value": 93.96
     },
     {
       "market_hash_name": "Sticker Slab | ZywOo (Champion) | Austin 2025",
@@ -1855,10 +1855,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 12.47,
-      "current_price": 12.47,
-      "change_percent": 0.0,
+      "current_price": 12.49,
+      "change_percent": 0.16,
       "alarm": null,
-      "total_value": 24.94
+      "total_value": 24.98
     },
     {
       "market_hash_name": "Sticker Slab | ZywOo (Foil) | Austin 2025",
@@ -1871,10 +1871,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 15.96,
-      "current_price": 15.96,
-      "change_percent": 0.0,
+      "current_price": 15.99,
+      "change_percent": 0.19,
       "alarm": null,
-      "total_value": 31.92
+      "total_value": 31.98
     },
     {
       "market_hash_name": "Sticker Slab | ZywOo (Foil, Champion) | Austin 2025",
@@ -1887,10 +1887,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 26.93,
-      "current_price": 26.93,
-      "change_percent": 0.0,
+      "current_price": 26.99,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 53.86
+      "total_value": 53.98
     },
     {
       "market_hash_name": "Sticker Slab | ZywOo (Glitter) | Copenhagen 2024",
@@ -1903,10 +1903,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 30.42,
-      "current_price": 30.42,
-      "change_percent": 0.0,
+      "current_price": 30.48,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 30.42
+      "total_value": 30.48
     },
     {
       "market_hash_name": "Sticker Slab | ZywOo (Glitter, Champion) | Paris 2023",
@@ -1919,10 +1919,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 35.9,
-      "current_price": 35.9,
-      "change_percent": 0.0,
+      "current_price": 35.98,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 35.9
+      "total_value": 35.98
     },
     {
       "market_hash_name": "Sticker Slab | ZywOo (Holo, Champion) | Austin 2025",
@@ -1935,10 +1935,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 72.3,
-      "current_price": 72.3,
-      "change_percent": 0.0,
+      "current_price": 72.46,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 72.3
+      "total_value": 72.46
     },
     {
       "market_hash_name": "Sticker Slab | ZywOo | Antwerp 2022",
@@ -1951,10 +1951,10 @@
       "price_as_of": "last_90d",
       "price_estimated": true,
       "previous_price": 10.47,
-      "current_price": 10.47,
-      "change_percent": 0.0,
+      "current_price": 10.49,
+      "change_percent": 0.19,
       "alarm": null,
-      "total_value": 10.47
+      "total_value": 10.49
     },
     {
       "market_hash_name": "Sticker Slab | apEX (Foil, Champion) | Austin 2025",
@@ -1967,10 +1967,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 26.93,
-      "current_price": 26.93,
-      "change_percent": 0.0,
+      "current_price": 26.99,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 53.86
+      "total_value": 53.98
     },
     {
       "market_hash_name": "Sticker Slab | apEX (Holo) | Budapest 2025",
@@ -1983,10 +1983,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 48.87,
-      "current_price": 48.87,
-      "change_percent": 0.0,
+      "current_price": 48.97,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 48.87
+      "total_value": 48.97
     },
     {
       "market_hash_name": "Sticker Slab | apEX (Holo, Champion) | Budapest 2025",
@@ -1999,10 +1999,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 36.4,
-      "current_price": 36.4,
-      "change_percent": 0.0,
+      "current_price": 36.48,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 109.2
+      "total_value": 109.44
     },
     {
       "market_hash_name": "Sticker Slab | donk (Champion) | Shanghai 2024",
@@ -2015,10 +2015,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 42.38,
-      "current_price": 42.38,
-      "change_percent": 0.0,
+      "current_price": 42.48,
+      "change_percent": 0.24,
       "alarm": null,
-      "total_value": 127.14
+      "total_value": 127.44
     },
     {
       "market_hash_name": "Sticker Slab | donk (Foil) | Austin 2025",
@@ -2031,10 +2031,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 97.24,
-      "current_price": 97.24,
-      "change_percent": 0.0,
+      "current_price": 97.45,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 97.24
+      "total_value": 97.45
     },
     {
       "market_hash_name": "Sticker Slab | donk (Glitter) | Shanghai 2024",
@@ -2047,10 +2047,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 37.9,
-      "current_price": 37.9,
-      "change_percent": 0.0,
+      "current_price": 37.98,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 75.8
+      "total_value": 75.96
     },
     {
       "market_hash_name": "Sticker Slab | donk (Glitter, Champion) | Shanghai 2024",
@@ -2063,10 +2063,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 41.39,
-      "current_price": 41.39,
-      "change_percent": 0.0,
+      "current_price": 41.48,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 248.34
+      "total_value": 248.88
     },
     {
       "market_hash_name": "Sticker Slab | donk (Holo, Champion) | Shanghai 2024",
@@ -2079,10 +2079,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 162.56,
-      "current_price": 162.56,
-      "change_percent": 0.0,
+      "current_price": 162.91,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 162.56
+      "total_value": 162.91
     },
     {
       "market_hash_name": "Sticker Slab | donk | Austin 2025",
@@ -2095,10 +2095,10 @@
       "price_as_of": "last_24h",
       "price_estimated": true,
       "previous_price": 46.87,
-      "current_price": 46.87,
-      "change_percent": 0.0,
+      "current_price": 46.97,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 140.61
+      "total_value": 140.91
     },
     {
       "market_hash_name": "Sticker Slab | donk | Copenhagen 2024",
@@ -2111,10 +2111,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 13.96,
-      "current_price": 13.96,
-      "change_percent": 0.0,
+      "current_price": 13.99,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 27.92
+      "total_value": 27.98
     },
     {
       "market_hash_name": "Sticker Slab | donk | Shanghai 2024",
@@ -2127,10 +2127,10 @@
       "price_as_of": null,
       "price_estimated": true,
       "previous_price": 34.91,
-      "current_price": 34.91,
-      "change_percent": 0.0,
+      "current_price": 34.98,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 69.82
+      "total_value": 69.96
     },
     {
       "market_hash_name": "Sticker Slab | s1mple (Glitter) | Antwerp 2022",
@@ -2143,10 +2143,10 @@
       "price_as_of": "last_90d",
       "price_estimated": true,
       "previous_price": 156.08,
-      "current_price": 156.08,
-      "change_percent": 0.0,
+      "current_price": 156.41,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 156.08
+      "total_value": 156.41
     },
     {
       "market_hash_name": "Sticker Slab | s1mple (Holo) | Stockholm 2021",
@@ -2158,11 +2158,11 @@
       "price_label": "Skinport (Steam'e ayarlı)",
       "price_as_of": null,
       "price_estimated": true,
-      "previous_price": 127.65,
-      "current_price": 127.15,
-      "change_percent": -0.39,
+      "previous_price": 127.15,
+      "current_price": 127.43,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 381.45
+      "total_value": 382.29
     },
     {
       "market_hash_name": "Sticker Slab | s1mple | Paris 2023",
@@ -2175,10 +2175,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 24.43,
-      "current_price": 24.43,
-      "change_percent": 0.0,
+      "current_price": 24.49,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 48.86
+      "total_value": 48.98
     },
     {
       "market_hash_name": "Sticker Slab | s1mple | Stockholm 2021",
@@ -2191,10 +2191,10 @@
       "price_as_of": "last_7d",
       "price_estimated": true,
       "previous_price": 40.39,
-      "current_price": 40.39,
-      "change_percent": 0.0,
+      "current_price": 40.48,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 242.34
+      "total_value": 242.88
     },
     {
       "market_hash_name": "Sticker | 9z Team (Glitter) | Antwerp 2022",
@@ -2206,11 +2206,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 81.78,
-      "current_price": 80.78,
-      "change_percent": -1.22,
+      "previous_price": 80.78,
+      "current_price": 80.96,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 80.78
+      "total_value": 80.96
     },
     {
       "market_hash_name": "Sticker | 9z Team | Rio 2022",
@@ -2223,10 +2223,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 3.99,
-      "current_price": 3.99,
-      "change_percent": 0.0,
+      "current_price": 4.0,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 15.96
+      "total_value": 16.0
     },
     {
       "market_hash_name": "Sticker | Boom Blast",
@@ -2238,11 +2238,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 1.99,
-      "current_price": 2.49,
-      "change_percent": 25.13,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 24.9
+      "previous_price": 2.49,
+      "current_price": 2.5,
+      "change_percent": 0.4,
+      "alarm": null,
+      "total_value": 25.0
     },
     {
       "market_hash_name": "Sticker | Clavis (Holo)",
@@ -2254,11 +2254,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 26.43,
-      "current_price": 23.93,
-      "change_percent": -9.46,
-      "alarm": "📉 Düşüş",
-      "total_value": 215.37
+      "previous_price": 23.93,
+      "current_price": 23.99,
+      "change_percent": 0.25,
+      "alarm": null,
+      "total_value": 215.91
     },
     {
       "market_hash_name": "Sticker | ENCE | Stockholm 2021",
@@ -2271,10 +2271,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 8.48,
-      "current_price": 8.48,
-      "change_percent": 0.0,
+      "current_price": 8.5,
+      "change_percent": 0.24,
       "alarm": null,
-      "total_value": 8.48
+      "total_value": 8.5
     },
     {
       "market_hash_name": "Sticker | Fluxo (Holo) | Austin 2025",
@@ -2286,11 +2286,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 88.76,
-      "current_price": 86.27,
-      "change_percent": -2.81,
+      "previous_price": 86.27,
+      "current_price": 86.45,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 86.27
+      "total_value": 86.45
     },
     {
       "market_hash_name": "Sticker | Fluxo (Holo) | Paris 2023",
@@ -2302,11 +2302,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 84.77,
-      "current_price": 74.3,
-      "change_percent": -12.35,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 148.6
+      "previous_price": 74.3,
+      "current_price": 74.46,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 148.92
     },
     {
       "market_hash_name": "Sticker | High Heat",
@@ -2318,11 +2318,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 26.93,
-      "current_price": 26.43,
-      "change_percent": -1.86,
+      "previous_price": 26.43,
+      "current_price": 26.49,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 79.29
+      "total_value": 79.47
     },
     {
       "market_hash_name": "Sticker | Natus Vincere (Gold) | Budapest 2025",
@@ -2334,11 +2334,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 118.68,
-      "current_price": 123.17,
-      "change_percent": 3.78,
+      "previous_price": 123.17,
+      "current_price": 123.43,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 246.34
+      "total_value": 246.86
     },
     {
       "market_hash_name": "Sticker | Natus Vincere (Holo) | 2020 RMR",
@@ -2350,11 +2350,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 19.45,
-      "current_price": 19.95,
-      "change_percent": 2.57,
+      "previous_price": 19.95,
+      "current_price": 19.99,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 139.65
+      "total_value": 139.93
     },
     {
       "market_hash_name": "Sticker | Spirit (Foil) | 2020 RMR",
@@ -2366,11 +2366,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 71.8,
-      "current_price": 71.31,
-      "change_percent": -0.68,
+      "previous_price": 71.31,
+      "current_price": 71.46,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 71.31
+      "total_value": 71.46
     },
     {
       "market_hash_name": "Sticker | Team Spirit | Copenhagen 2024",
@@ -2383,10 +2383,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 4.99,
-      "current_price": 4.99,
-      "change_percent": 0.0,
+      "current_price": 5.0,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 4.99
+      "total_value": 5.0
     },
     {
       "market_hash_name": "Sticker | Vitality (Foil) | Stockholm 2021",
@@ -2399,10 +2399,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 49.37,
-      "current_price": 49.37,
-      "change_percent": 0.0,
+      "current_price": 49.47,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 49.37
+      "total_value": 49.47
     },
     {
       "market_hash_name": "Sticker | Vitality (Holo) | Budapest 2025",
@@ -2414,11 +2414,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 48.87,
-      "current_price": 52.36,
-      "change_percent": 7.14,
-      "alarm": "📈 Yükseliş",
-      "total_value": 104.72
+      "previous_price": 52.36,
+      "current_price": 52.47,
+      "change_percent": 0.21,
+      "alarm": null,
+      "total_value": 104.94
     },
     {
       "market_hash_name": "Sticker | ZywOo (Champion) | Paris 2023",
@@ -2447,10 +2447,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 29.92,
-      "current_price": 29.92,
-      "change_percent": 0.0,
+      "current_price": 29.98,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 29.92
+      "total_value": 29.98
     },
     {
       "market_hash_name": "Sticker | ZywOo | Antwerp 2022",
@@ -2462,11 +2462,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 1.99,
-      "current_price": 2.49,
-      "change_percent": 25.13,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 4.98
+      "previous_price": 2.49,
+      "current_price": 2.5,
+      "change_percent": 0.4,
+      "alarm": null,
+      "total_value": 5.0
     },
     {
       "market_hash_name": "Sticker | ZywOo | Shanghai 2024",
@@ -2479,10 +2479,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 1.99,
-      "current_price": 1.99,
-      "change_percent": 0.0,
+      "current_price": 2.0,
+      "change_percent": 0.5,
       "alarm": null,
-      "total_value": 3.98
+      "total_value": 4.0
     },
     {
       "market_hash_name": "Sticker | ZywOo | Stockholm 2021",
@@ -2495,10 +2495,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 2.99,
-      "current_price": 2.99,
-      "change_percent": 0.0,
+      "current_price": 3.0,
+      "change_percent": 0.33,
       "alarm": null,
-      "total_value": 5.98
+      "total_value": 6.0
     },
     {
       "market_hash_name": "Sticker | apEX (Gold, Champion) | Paris 2023",
@@ -2510,11 +2510,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 109.7,
-      "current_price": 105.21,
-      "change_percent": -4.09,
+      "previous_price": 105.21,
+      "current_price": 105.44,
+      "change_percent": 0.22,
       "alarm": null,
-      "total_value": 105.21
+      "total_value": 105.44
     },
     {
       "market_hash_name": "Sticker | apEX (Holo) | Paris 2023",
@@ -2526,11 +2526,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 26.43,
-      "current_price": 27.43,
-      "change_percent": 3.78,
+      "previous_price": 27.43,
+      "current_price": 27.48,
+      "change_percent": 0.18,
       "alarm": null,
-      "total_value": 109.72
+      "total_value": 109.92
     },
     {
       "market_hash_name": "Sticker | apEX (Holo) | Stockholm 2021",
@@ -2542,11 +2542,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 74.3,
-      "current_price": 60.83,
-      "change_percent": -18.13,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 182.49
+      "previous_price": 60.83,
+      "current_price": 60.97,
+      "change_percent": 0.23,
+      "alarm": null,
+      "total_value": 182.91
     },
     {
       "market_hash_name": "Sticker | donk (Champion) | Shanghai 2024",
@@ -2559,10 +2559,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 3.99,
-      "current_price": 3.99,
-      "change_percent": 0.0,
+      "current_price": 4.0,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 7.98
+      "total_value": 8.0
     },
     {
       "market_hash_name": "Sticker | donk (Glitter) | Copenhagen 2024",
@@ -2574,11 +2574,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 189.98,
-      "current_price": 207.44,
-      "change_percent": 9.19,
-      "alarm": "📈 Yükseliş",
-      "total_value": 414.88
+      "previous_price": 207.44,
+      "current_price": 207.89,
+      "change_percent": 0.22,
+      "alarm": null,
+      "total_value": 415.78
     },
     {
       "market_hash_name": "Sticker | donk (Glitter) | Shanghai 2024",
@@ -2591,10 +2591,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 34.91,
-      "current_price": 34.91,
-      "change_percent": 0.0,
+      "current_price": 34.98,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 34.91
+      "total_value": 34.98
     },
     {
       "market_hash_name": "Sticker | donk (Holo) | Budapest 2025",
@@ -2607,10 +2607,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 174.53,
-      "current_price": 174.53,
-      "change_percent": 0.0,
+      "current_price": 174.9,
+      "change_percent": 0.21,
       "alarm": null,
-      "total_value": 349.06
+      "total_value": 349.8
     },
     {
       "market_hash_name": "Sticker | donk | Budapest 2025",
@@ -2622,11 +2622,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 9.47,
-      "current_price": 8.48,
-      "change_percent": -10.45,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 16.96
+      "previous_price": 8.48,
+      "current_price": 8.5,
+      "change_percent": 0.24,
+      "alarm": null,
+      "total_value": 17.0
     },
     {
       "market_hash_name": "Sticker | donk | Shanghai 2024",
@@ -2638,11 +2638,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 4.99,
-      "current_price": 6.48,
-      "change_percent": 29.86,
-      "alarm": "🔥 Fiyat alarmı",
-      "total_value": 12.96
+      "previous_price": 6.48,
+      "current_price": 6.5,
+      "change_percent": 0.31,
+      "alarm": null,
+      "total_value": 13.0
     },
     {
       "market_hash_name": "Sticker | s1mple | Antwerp 2022",
@@ -2654,11 +2654,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 12.47,
-      "current_price": 12.96,
-      "change_percent": 3.93,
+      "previous_price": 12.96,
+      "current_price": 12.99,
+      "change_percent": 0.23,
       "alarm": null,
-      "total_value": 25.92
+      "total_value": 25.98
     },
     {
       "market_hash_name": "Tec-9 | Rebel (Minimal Wear)",
@@ -2671,10 +2671,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 7.98,
-      "current_price": 7.98,
-      "change_percent": 0.0,
+      "current_price": 8.0,
+      "change_percent": 0.25,
       "alarm": null,
-      "total_value": 7.98
+      "total_value": 8.0
     },
     {
       "market_hash_name": "UMP-45 | Late Night Transit (Well-Worn)",
@@ -2686,11 +2686,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 9.47,
-      "current_price": 9.97,
-      "change_percent": 5.28,
-      "alarm": "📈 Yükseliş",
-      "total_value": 9.97
+      "previous_price": 9.97,
+      "current_price": 9.99,
+      "change_percent": 0.2,
+      "alarm": null,
+      "total_value": 9.99
     },
     {
       "market_hash_name": "USP-S | Lead Conduit (Well-Worn)",
@@ -2702,11 +2702,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 46.37,
-      "current_price": 45.88,
-      "change_percent": -1.06,
+      "previous_price": 45.88,
+      "current_price": 45.97,
+      "change_percent": 0.2,
       "alarm": null,
-      "total_value": 45.88
+      "total_value": 45.97
     },
     {
       "market_hash_name": "USP-S | PC-GRN (Field-Tested)",
@@ -2718,11 +2718,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 8.98,
-      "current_price": 7.48,
-      "change_percent": -16.7,
-      "alarm": "🚨 Büyük düşüş",
-      "total_value": 7.48
+      "previous_price": 7.48,
+      "current_price": 7.5,
+      "change_percent": 0.27,
+      "alarm": null,
+      "total_value": 7.5
     },
     {
       "market_hash_name": "XM1014 | Watchdog (Field-Tested)",
@@ -2734,11 +2734,11 @@
       "price_label": "CSROI · Steam son 24 saat",
       "price_as_of": null,
       "price_estimated": false,
-      "previous_price": 93.25,
-      "current_price": 100.73,
-      "change_percent": 8.02,
-      "alarm": "📈 Yükseliş",
-      "total_value": 100.73
+      "previous_price": 100.73,
+      "current_price": 100.94,
+      "change_percent": 0.21,
+      "alarm": null,
+      "total_value": 100.94
     },
     {
       "market_hash_name": "Zeus x27 | Electric Blue (Battle-Scarred)",
@@ -2751,10 +2751,10 @@
       "price_as_of": null,
       "price_estimated": false,
       "previous_price": 1.99,
-      "current_price": 1.99,
-      "change_percent": 0.0,
+      "current_price": 2.0,
+      "change_percent": 0.5,
       "alarm": null,
-      "total_value": 1.99
+      "total_value": 2.0
     }
   ],
   "inventory_source": "cache",
